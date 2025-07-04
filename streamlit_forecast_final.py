@@ -120,3 +120,44 @@ st.markdown("""
 - القيم القريبة من **-1** تعني ارتباط سلبي قوي.
 - القيم القريبة من **0** تعني عدم وجود ارتباط مباشر.
 """)
+import yfinance as yf
+import pandas as pd
+import datetime
+
+# Set analysis period: last 7 days
+end_date = datetime.datetime.today()
+start_date = end_date - datetime.timedelta(days=7)
+
+# Define a set of key market assets
+assets = {
+    "S&P 500": "^GSPC",
+    "Gold": "GC=F",
+    "Oil (WTI)": "CL=F",
+    "EUR/USD": "EURUSD=X",
+    "Apple": "AAPL",
+    "Tesla": "TSLA",
+    "Amazon": "AMZN"
+}
+
+# Download adjusted closing prices
+data = yf.download(list(assets.values()), start=start_date, end=end_date)["Adj Close"]
+data.columns = list(assets.keys())
+data.dropna(inplace=True)
+
+# Calculate 7-day percentage returns
+weekly_returns = (data.iloc[-1] - data.iloc[0]) / data.iloc[0] * 100
+weekly_returns = weekly_returns.sort_values(ascending=False)
+
+# Output: Executive Summary
+print("📊 Weekly Market Highlights\n")
+print(weekly_returns.to_frame(name="7-Day Return (%)").round(2))
+
+# Generate Strategic Takeaways
+print("\n📌 Strategic Summary:")
+
+top_asset = weekly_returns.index[0]
+bottom_asset = weekly_returns.index[-1]
+
+print(f"- ✅ Top Performer: {top_asset} (+{weekly_returns[top_asset]:.2f}%)")
+print(f"- 🔻 Worst Performer: {bottom_asset} ({weekly_returns[bottom_asset]:.2f}%)")
+print("- 🧠 Strategy: Consider overweighting strong performers and reviewing exposure to laggards.")
