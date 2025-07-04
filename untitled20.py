@@ -2245,8 +2245,24 @@ if world is not None:
 else:
     print("Failed to load world map data. Cannot proceed with plotting.")
 
-!pip install geopandas shapely pyproj
-!pip install geopandas shapely pyproj
+!streamlit
+pandas
+yfinance
+plotly
+prophet
+geopandas
+shapely
+pyproj
+ geopandas shapely pyproj
+!streamlit
+pandas
+yfinance
+plotly
+prophet
+geopandas
+shapely
+pyproj
+ geopandas shapely pyproj
 
 # --- Sentiment & Flow Analysis Section (Google Colab Ready) ---
 
@@ -2405,7 +2421,15 @@ plt.show()
 data.tail()
 
 # 📦 Install required packages (only needed in Colab)
-!pip install yfinance statsmodels --quiet
+!streamlit
+pandas
+yfinance
+plotly
+prophet
+geopandas
+shapely
+pyproj
+ yfinance statsmodels --quiet
 
 # 📈 Import libraries
 import yfinance as yf
@@ -2440,7 +2464,15 @@ plt.show()
 forecast
 
 # 📦 Install necessary packages (only in Colab)
-!pip install yfinance numpy pandas matplotlib scipy --quiet
+!streamlit
+pandas
+yfinance
+plotly
+prophet
+geopandas
+shapely
+pyproj
+ yfinance numpy pandas matplotlib scipy --quiet
 
 # 📈 Import libraries
 import yfinance as yf
@@ -2604,7 +2636,15 @@ plt.tight_layout()
 plt.show()
 
 # 📦 Install Prophet (only in Google Colab)
-!pip install prophet yfinance --quiet
+streamlit
+pandas
+yfinance
+plotly
+prophet
+geopandas
+shapely
+pyproj
+ prophet yfinance --quiet
 
 # 📈 Import libraries
 import yfinance as yf
