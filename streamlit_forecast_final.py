@@ -30,3 +30,41 @@ st.dataframe(data.tail())
 fig, ax = plt.subplots()
 data.plot(ax=ax)
 st.pyplot(fig)
+
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+
+st.set_page_config(page_title="تحليل أسعار النفط", layout="centered")
+
+st.title("📊 تحليل أسعار النفط الخام (WTI)")
+
+symbol = "CL=F"
+start_date = "2023-01-01"
+end_date = "2025-07-01"
+
+st.markdown("### تحميل البيانات من Yahoo Finance...")
+
+data = yf.download(symbol, start=start_date, end=end_date)
+
+if data.empty:
+    st.error("⚠️ تعذّر تحميل البيانات.")
+else:
+    st.markdown("### بيانات خام")
+    st.dataframe(data.tail())
+
+    st.markdown("### الرسم البياني اليومي")
+    st.line_chart(data['Close'])
+
+    data['SMA_20'] = data['Close'].rolling(window=20).mean()
+    data['SMA_50'] = data['Close'].rolling(window=50).mean()
+
+    st.markdown("### مؤشرات فنية: متوسطات متحركة")
+    fig, ax = plt.subplots()
+    ax.plot(data.index, data['Close'], label='السعر')
+    ax.plot(data.index, data['SMA_20'], label='SMA 20', linestyle='--')
+    ax.plot(data.index, data['SMA_50'], label='SMA 50', linestyle=':')
+    ax.legend()
+    st.pyplot(fig)
+
