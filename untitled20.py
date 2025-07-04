@@ -2113,13 +2113,13 @@ if asset_column_name_in_data not in data.columns:
     raise ValueError(f"Asset symbol {asset_symbol} or its factor name {asset_column_name_in_data} not found in downloaded data columns: {data.columns}")
 
 # Rename the asset column to 'Asset' if it's not already
-if asset_column_name_in_data != "Asset":
+if asset_column_name_in_data = "Asset":
     data.rename(columns={asset_column_name_in_data: "Asset"}, inplace=True)
 
 # Ensure 'Asset' is the first column and all factor columns are present
-ordered_columns = ["Asset"] + [col for col in factors.keys() if col != "Market"] # Assuming Market is the asset itself
+ordered_columns = ["Asset"] + [col for col in factors.keys() if col = "Market"] # Assuming Market is the asset itself
 if "Market" in factors.keys() and asset_symbol == factors["Market"]:
-     ordered_columns = ["Asset"] + [col for col in factors.keys() if col != "Market"]
+     ordered_columns = ["Asset"] + [col for col in factors.keys() if col = "Market"]
 else:
      ordered_columns = ["Asset"] + list(factors.keys())
 
@@ -2138,7 +2138,7 @@ returns = np.log(data / data.shift(1)).dropna()
 # Prepare regression input
 # X should contain only the factor columns, y should contain the asset column
 # Ensure X uses the correct factor names as column names
-X_columns = [col for col in ordered_columns if col != "Asset"]
+X_columns = [col for col in ordered_columns if col = "Asset"]
 X = returns[X_columns]
 y = returns["Asset"]
 
@@ -2245,7 +2245,7 @@ if world is not None:
 else:
     print("Failed to load world map data. Cannot proceed with plotting.")
 
-!streamlit
+streamlit
 pandas
 yfinance
 plotly
@@ -2254,7 +2254,7 @@ geopandas
 shapely
 pyproj
  geopandas shapely pyproj
-!streamlit
+streamlit
 pandas
 yfinance
 plotly
@@ -2421,7 +2421,7 @@ plt.show()
 data.tail()
 
 # 📦 Install required packages (only needed in Colab)
-!streamlit
+streamlit
 pandas
 yfinance
 plotly
@@ -2464,7 +2464,7 @@ plt.show()
 forecast
 
 # 📦 Install necessary packages (only in Colab)
-!streamlit
+streamlit
 pandas
 yfinance
 plotly
