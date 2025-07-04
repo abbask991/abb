@@ -164,3 +164,49 @@ bottom = weekly_returns.index[-1]
 print(f"- ✅ Top Performer: {top} (+{weekly_returns[top]:.2f}%)")
 print(f"- 🔻 Worst Performer: {bottom} ({weekly_returns[bottom]:.2f}%)")
 print("- 🧠 Strategy: Focus on top performers and reconsider exposure to underperformers.")
+
+import yfinance as yf
+import pandas as pd
+import datetime
+
+# Define date range
+end_date = datetime.datetime.today()
+start_date = end_date - datetime.timedelta(days=7)
+
+# Asset list
+assets = {
+    "S&P 500": "^GSPC",
+    "Gold": "GC=F",
+    "Oil": "CL=F",
+    "EUR/USD": "EURUSD=X",
+    "Apple": "AAPL",
+    "Tesla": "TSLA",
+    "Amazon": "AMZN"
+}
+
+# Download data (only 'Close' to avoid 'Adj Close' issues)
+raw_data = yf.download(list(assets.values()), start=start_date, end=end_date)["Close"]
+
+# Rename columns to asset names
+raw_data.columns = list(assets.keys())
+
+# Drop rows with missing values
+raw_data.dropna(inplace=True)
+
+# Calculate weekly returns
+weekly_returns = (raw_data.iloc[-1] - raw_data.iloc[0]) / raw_data.iloc[0] * 100
+weekly_returns = weekly_returns.sort_values(ascending=False)
+
+# Print summary
+print("📊 Weekly Market Highlights\n")
+print(weekly_returns.to_frame(name="7-Day Return (%)").round(2))
+
+# Strategy summary
+print("\n📌 Strategic Summary:")
+top = weekly_returns.index[0]
+bottom = weekly_returns.index[-1]
+
+print(f"- ✅ Top Performer: {top} (+{weekly_returns[top]:.2f}%)")
+print(f"- 🔻 Worst Performer: {bottom} ({weekly_returns[bottom]:.2f}%)")
+print("- 🧠 Strategy: Focus on top performers and reconsider exposure to underperformers.")
+
