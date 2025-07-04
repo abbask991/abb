@@ -68,3 +68,55 @@ else:
     ax.legend()
     st.pyplot(fig)
 
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+st.set_page_config(page_title="تحليل الارتباط بين الأصول", layout="wide")
+st.title("📊 تحليل الارتباط بين الأصول المالية الرئيسية")
+
+# الرموز المالية للأصول
+tickers = {
+    "Gold": "GC=F",
+    "Oil (WTI)": "CL=F",
+    "EUR/USD": "EURUSD=X",
+    "GBP/USD": "GBPUSD=X",
+    "S&P 500": "^GSPC"
+}
+
+start_date = "2023-01-01"
+end_date = "2025-07-01"
+
+st.markdown("### تحميل البيانات من Yahoo Finance...")
+
+# تحميل البيانات من Yahoo
+data = yf.download(list(tickers.values()), start=start_date, end=end_date)["Close"]
+
+# إعادة تسمية الأعمدة
+data.columns = tickers.keys()
+
+# حذف الصفوف الفارغة
+data.dropna(inplace=True)
+
+# عرض جزء من البيانات
+st.markdown("### عينة من البيانات:")
+st.dataframe(data.tail())
+
+# حساب مصفوفة الارتباط
+correlation_matrix = data.corr()
+
+# رسم Heatmap للارتباط
+st.markdown("### 🔥 خريطة الارتباط بين الأصول (Correlation Heatmap)")
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+st.pyplot(fig)
+
+# شرح سريع
+st.markdown("""
+**ملاحظة**:
+- القيم القريبة من **+1** تعني ارتباط موجب قوي.
+- القيم القريبة من **-1** تعني ارتباط سلبي قوي.
+- القيم القريبة من **0** تعني عدم وجود ارتباط مباشر.
+""")
