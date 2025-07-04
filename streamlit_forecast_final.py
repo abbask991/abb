@@ -210,3 +210,14 @@ print(f"- ✅ Top Performer: {top} (+{weekly_returns[top]:.2f}%)")
 print(f"- 🔻 Worst Performer: {bottom} ({weekly_returns[bottom]:.2f}%)")
 print("- 🧠 Strategy: Focus on top performers and reconsider exposure to underperformers.")
 
+import streamlit as st
+import datetime
+from datetime import timedelta
+
+# Force rerun with a refresh button
+if st.button("🔁 Refresh Market Data"):
+    st.experimental_rerun()
+
+# Show current time
+st.markdown(f"⏱️ Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
