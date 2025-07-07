@@ -221,3 +221,121 @@ if st.button("🔁 Refresh Market Data"):
 # Show current time
 st.markdown(f"⏱️ Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
+# Install required packages if needed:
+# pip install pandas numpy matplotlib scikit-learn
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Step 1: Generate synthetic daily data (April to June 2024)
+date_range = pd.date_range(start="2025-04-01", end="2025-06-30", freq="D")
+np.random.seed(42)
+n = len(date_range)
+
+# Step 2: Simulate macroeconomic variables
+gold_price = 1900 + np.cumsum(np.random.normal(0, 3, n))  # base trend + noise
+interest_rate = 2.5 + np.random.normal(0, 0.03, n)         # small fluctuations
+inflation = 2 + 0.02 * np.arange(n)/30 + np.random.normal(0, 0.05, n)  # rising
+usd_index = 100 - 0.01 * np.arange(n) + np.random.normal(0, 0.1, n)    # slight decline
+geo_risk = np.clip(50 + 5*np.sin(np.linspace(0, 10, n)) + np.random.normal(0, 3, n), 0, 100)
+
+# Step 3: Create DataFrame
+df = pd.DataFrame({
+    'GoldPrice': gold_price,
+    'InterestRate': interest_rate,
+    'Inflation': inflation,
+    'USDIndex': usd_index,
+    'GeopoliticalRisk': geo_risk
+}, index=date_range)
+
+# Step 4: Prepare features (X) and target (y)
+X = df[['InterestRate', 'Inflation', 'USDIndex', 'GeopoliticalRisk']]
+y = df['GoldPrice']
+
+# Step 5: Train/Test Split (no shuffling for time-series)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Step 6: Train Linear Regression Model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Step 7: Make predictions and evaluate
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+# Step 8: Plot results
+plt.figure(figsize=(12,6))
+plt.plot(y_test.index, y_test, label='Actual Gold Price', color='blue')
+plt.plot(y_test.index, y_pred, label='Predicted Gold Price', color='orange')
+plt.title(f'Gold Price Forecast (Linear Regression)\nMSE={mse:.2f}, R²={r2:.2f}')
+plt.xlabel('Date')
+plt.ylabel('Gold Price (XAU/USD)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+# Install required packages if needed:
+# pip install pandas numpy matplotlib scikit-learn
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Step 1: Generate synthetic daily data (April to June 2024)
+date_range = pd.date_range(start="2025-04-01", end="2025-06-30", freq="D")
+np.random.seed(42)
+n = len(date_range)
+
+# Step 2: Simulate macroeconomic variables
+gold_price = 1900 + np.cumsum(np.random.normal(0, 3, n))  # base trend + noise
+interest_rate = 2.5 + np.random.normal(0, 0.03, n)         # small fluctuations
+inflation = 2 + 0.02 * np.arange(n)/30 + np.random.normal(0, 0.05, n)  # rising
+usd_index = 100 - 0.01 * np.arange(n) + np.random.normal(0, 0.1, n)    # slight decline
+geo_risk = np.clip(50 + 5*np.sin(np.linspace(0, 10, n)) + np.random.normal(0, 3, n), 0, 100)
+
+# Step 3: Create DataFrame
+df = pd.DataFrame({
+    'GoldPrice': gold_price,
+    'InterestRate': interest_rate,
+    'Inflation': inflation,
+    'USDIndex': usd_index,
+    'GeopoliticalRisk': geo_risk
+}, index=date_range)
+
+# Step 4: Prepare features (X) and target (y)
+X = df[['InterestRate', 'Inflation', 'USDIndex', 'GeopoliticalRisk']]
+y = df['GoldPrice']
+
+# Step 5: Train/Test Split (no shuffling for time-series)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Step 6: Train Linear Regression Model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Step 7: Make predictions and evaluate
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+# Step 8: Plot results
+plt.figure(figsize=(12,6))
+plt.plot(y_test.index, y_test, label='Actual Gold Price', color='blue')
+plt.plot(y_test.index, y_pred, label='Predicted Gold Price', color='orange')
+plt.title(f'Gold Price Forecast (Linear Regression)\nMSE={mse:.2f}, R²={r2:.2f}')
+plt.xlabel('Date')
+plt.ylabel('Gold Price (XAU/USD)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
