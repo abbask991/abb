@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Title
-st.title("🛢️ Iraqi Oil Risk Dashboard")
+st.title(" Iraqi Oil Risk Dashboard")
 st.markdown("**Forecast Based on Global Macro Indicators – Updated Weekly**")
 
 # Sample input data for Advanced Model (Expanded)
@@ -115,7 +115,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Title
-st.title("🛢️ Iraqi Oil Risk Dashboard")
+st.title(" Iraqi Oil Risk Dashboard")
 st.markdown("**Forecast Based on Global Macro Indicators – Updated Weekly**")
 
 # Sample input data (simulated values for demonstration)
@@ -161,11 +161,11 @@ st.dataframe(df, use_container_width=True)
 risk_score = sum(df["Weight"] * df["Score"])
 
 # Display Risk Level
-st.subheader("🔥 Composite Risk Score")
+st.subheader( Composite Risk Score")
 st.metric(label="Overall Risk Level", value=f"{risk_score:.3f}", delta=None)
 
 # Recommendations
-st.subheader("📌 Dynamic Policy Recommendations")
+st.subheader("Dynamic Policy Recommendations")
 if risk_score >= 0.9:
     st.error("High Risk of Oil Price Decline – Immediate Policy Action Required")
     st.markdown("- Reevaluate budget benchmark oil price below $65\n"
@@ -215,7 +215,7 @@ ax2.grid(True)
 st.pyplot(fig2)
 
 # Composite Risk Score vs Brent Oil Price
-st.subheader("📉 Risk Score vs Brent Oil Price")
+st.subheader("Risk Score vs Brent Oil Price")
 composite = trend_data.copy()
 composite["Composite Risk Score"] = (
     0.25 * composite["Yield Curve"] +
@@ -309,15 +309,15 @@ composite["Basrah Light Price"] = [87, 83, 75, 71]
 # ===============================
 # Streamlit Dashboard
 # ===============================
-st.title("🛢️ Iraqi Oil Risk & Price Forecast")
+st.title(" Iraqi Oil Risk & Price Forecast")
 
-st.subheader("📊 Weekly Risk & Price Comparison")
+st.subheader("Weekly Risk & Price Comparison")
 st.dataframe(composite, use_container_width=True)
 
 # ===============================
 # Chart: Risk Score vs Brent & Basrah
 # ===============================
-st.subheader("📉 Risk Score vs Brent & Basrah Light Prices")
+st.subheader(" Risk Score vs Brent & Basrah Light Prices")
 
 fig, ax1 = plt.subplots(figsize=(10, 6))
 ax1.set_xlabel("Week")
@@ -398,15 +398,15 @@ composite["Basrah Light Price"] = [87, 83, 75, 71]
 # ===============================
 # Streamlit Dashboard
 # ===============================
-st.title("🛢️ Iraqi Oil Risk & Price Forecast Dashboard")
+st.title(" Iraqi Oil Risk & Price Forecast Dashboard")
 
-st.subheader("📊 Weekly Risk & Oil Price Assessment")
+st.subheader(" Weekly Risk & Oil Price Assessment")
 st.dataframe(composite, use_container_width=True)
 
 # ===============================
 # Chart: Risk Score vs Brent & Basrah
 # ===============================
-st.subheader("📉 Risk Score vs Brent & Basrah Light Prices")
+st.subheader("Risk Score vs Brent & Basrah Light Prices")
 
 fig, ax1 = plt.subplots(figsize=(10, 6))
 ax1.set_xlabel("Week")
@@ -429,7 +429,7 @@ st.pyplot(fig)
 # ===============================
 # Forecast for Week 5 (Simple Model)
 # ===============================
-st.subheader("📈 Basic Forecast – Week 5")
+st.subheader(" Basic Forecast – Week 5")
 next_score = composite["Composite Risk Score"].iloc[-1]
 next_brent = composite["Brent Oil Price"].iloc[-1] - (next_score - 0.9) * 20
 next_basrah = next_brent - 2
@@ -444,7 +444,7 @@ st.json({
 # ===============================
 # ARIMA Forecast – Brent Oil
 # ===============================
-st.subheader("🔮 ARIMA Forecast – Brent Oil Price (Next 3 Weeks)")
+st.subheader(" ARIMA Forecast – Brent Oil Price (Next 3 Weeks)")
 brent_series = pd.Series(composite["Brent Oil Price"].values, index=pd.RangeIndex(start=1, stop=5, step=1))
 model = ARIMA(brent_series, order=(1, 1, 1))
 model_fit = model.fit()
