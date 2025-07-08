@@ -44,18 +44,18 @@ data = {
 df = pd.DataFrame(data)
 
 # Display table
-st.subheader("📊 Weekly Indicator Assessment")
+st.subheader(" Weekly Indicator Assessment")
 st.dataframe(df, use_container_width=True)
 
 # Compute Risk Score
 risk_score = sum(df["Weight"] * df["Score"])
 
 # Gauge-like display for risk level
-st.subheader("🔥 Composite Risk Score")
+st.subheader(" Composite Risk Score")
 st.metric(label="Overall Risk Level", value=f"{risk_score:.3f}", delta=None)
 
 # Risk level interpretation with policy recommendations
-st.subheader("📌 Dynamic Policy Recommendations")
+st.subheader(" Dynamic Policy Recommendations")
 if risk_score >= 0.9:
     st.error("High Risk of Oil Price Decline – Immediate Policy Action Required")
     st.markdown("- Reevaluate budget benchmark oil price below $65\n"
@@ -80,7 +80,7 @@ ax.set_title("Weight of Indicators in Oil Forecast Model")
 st.pyplot(fig)
 
 # Time Series Chart of Scores for Illustration
-st.subheader("📈 Indicator Score Trend")
+st.subheader(" Indicator Score Trend")
 trend_data = pd.DataFrame({
     "Week": ["Week 1", "Week 2", "Week 3", "Week 4"],
     "Yield Curve Inversion": [0.8, 0.9, 1.0, 1.0],
