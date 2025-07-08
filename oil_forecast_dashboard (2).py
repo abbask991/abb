@@ -469,3 +469,15 @@ plt.ylabel("Correlation")
 plt.legend()
 plt.grid(True)
 plt.show()
+
+plt.figure(figsize=(10,6))
+for col in ["Oil_Price", "Fed_Rate_Δ", "PMI_Δ", "VIX_Δ", "EIA_Stock_Δ"]:
+    plt.plot(data["Date"], data[col], label=col)
+
+plt.title("Oil and Related Variables Over Time")
+plt.xlabel("Date")
+plt.ylabel("Value")
+plt.legend()
+plt.grid(True)
+plt.show()
+
