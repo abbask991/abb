@@ -256,11 +256,17 @@ import matplotlib.pyplot as plt
 # ===============================
 # Simulated weekly indicator scores
 weeks = ["Week 1", "Week 2", "Week 3", "Week 4"]
+# افترض أن عندك متغيرات: weeks, trend_values
 trend_data = pd.DataFrame({
     "Week": weeks,
+    "Trend_Score": trend_values
+})
+
+# ثم تبدأ الاستيراد (لكن يفضل أن تكون import دائماً في أعلى الملف)
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+
 
 # ===============================
 # Data Preparation
