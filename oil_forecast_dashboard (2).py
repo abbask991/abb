@@ -257,11 +257,15 @@ import matplotlib.pyplot as plt
 # Simulated weekly indicator scores
 weeks = ["Week 1", "Week 2", "Week 3", "Week 4"]
 # افترض أن عندك متغيرات: weeks, trend_values
+# خارج القوس، في سطر مستقل
+trend_values = [0.1, 0.15, 0.2, 0.18, 0.22]
+
+# ثم ننشئ الـ DataFrame بعده
 trend_data = pd.DataFrame({
     "Week": weeks,
-    trend_values = [0.1, 0.15, 0.2, 0.18, 0.22]  # مثال: قيم ترند وهمية
     "Trend_Score": trend_values
 })
+
 
 # ثم تبدأ الاستيراد (لكن يفضل أن تكون import دائماً في أعلى الملف)
 import streamlit as st
