@@ -457,3 +457,15 @@ st.dataframe(brent_forecast_df)
 # ===============================
 st.markdown("---")
 st.caption("ARIMA model generated for strategic insights. For academic and simulation purposes only.")
+
+window = 3  # عدد الفترات
+rolling_corr = data['Oil_Price'].rolling(window).corr(data['Fed_Rate_Δ'])
+
+plt.figure(figsize=(8,4))
+plt.plot(data['Date'], rolling_corr, label="Rolling Corr: Oil vs Fed Rate Δ")
+plt.title("Rolling Correlation: Oil Price vs Fed Rate Change")
+plt.xlabel("Date")
+plt.ylabel("Correlation")
+plt.legend()
+plt.grid(True)
+plt.show()
