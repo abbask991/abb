@@ -259,6 +259,7 @@ weeks = ["Week 1", "Week 2", "Week 3", "Week 4"]
 # افترض أن عندك متغيرات: weeks, trend_values
 trend_data = pd.DataFrame({
     "Week": weeks,
+    trend_values = [0.1, 0.15, 0.2, 0.18, 0.22]  # مثال: قيم ترند وهمية
     "Trend_Score": trend_values
 })
 
