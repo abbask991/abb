@@ -220,6 +220,103 @@ def analyze_pair(trades_a, trades_b, account_info_a, account_info_b,
     return results, total_score, exp_a, exp_b
 
 
+def build_position_detail_rows(trades_a, trades_b, account_info_a, account_info_b,
+                                time_threshold_sec, lot_tolerance):
+    """Build per-position detection table rows with all flag columns."""
+    pairs = match_trades(trades_a, trades_b, time_threshold_sec)
+    rows = []
+    for ta, tb, dt in pairs:
+        if ta["Symbol"] != tb["Symbol"]:
+            continue
+        close_dt = time_diff_seconds(ta["Close Time"], tb["Close Time"])
+        is_opposite = ta["Direction"] != tb["Direction"]
+        is_open_match = dt <= time_threshold_sec
+        is_close_match = close_dt <= time_threshold_sec
+        is_lot_match = lot_similarity(ta["Lot Size"], tb["Lot Size"], lot_tolerance)
+
+        flags_hit = sum([True, is_opposite, is_open_match, is_close_match, is_lot_match])
+        pair_score = (
+            DETECTION_PARAMS["same_symbol"]["points"]
+            + (DETECTION_PARAMS["opposite_direction"]["points"] if is_opposite else 0)
+            + (DETECTION_PARAMS["open_time_match"]["points"] if is_open_match else 0)
+            + (DETECTION_PARAMS["close_time_match"]["points"] if is_close_match else 0)
+            + (DETECTION_PARAMS["same_lot_size"]["points"] if is_lot_match else 0)
+        )
+
+        rows.append({
+            "Trade A": ta["Trade ID"],
+            "Trade B": tb["Trade ID"],
+            "Symbol": ta["Symbol"],
+            "Dir A": ta["Direction"],
+            "Dir B": tb["Direction"],
+            "Lot A": ta["Lot Size"],
+            "Lot B": tb["Lot Size"],
+            "Open A": ta["Open Time"],
+            "Open B": tb["Open Time"],
+            "Open \u0394 (s)": round(dt, 1),
+            "Close A": ta["Close Time"],
+            "Close B": tb["Close Time"],
+            "Close \u0394 (s)": round(close_dt, 1),
+            "Same Symbol": "\u2705",
+            "Opposite Dir": "\u2705" if is_opposite else "\u274c",
+            "Open Time Match": "\u2705" if is_open_match else "\u274c",
+            "Close Time Match": "\u2705" if is_close_match else "\u274c",
+            "Same Lot": "\u2705" if is_lot_match else "\u274c",
+            "Pair Score": pair_score,
+        })
+    return rows
+
+
+def build_account_detail_rows(account_info_a, account_info_b, exp_a, exp_b):
+    """Build the account-level detection summary."""
+    cid_a = set(account_info_a.get("cids", []))
+    cid_b = set(account_info_b.get("cids", []))
+    ip_a = set(account_info_a.get("ips", []))
+    ip_b = set(account_info_b.get("ips", []))
+    shared_cids = cid_a & cid_b
+    shared_ips = ip_a & ip_b
+    bonus_a = account_info_a.get("bonus", 0)
+    bonus_b = account_info_b.get("bonus", 0)
+    bonus_match = bonus_a > 0 and bonus_b > 0 and bonus_within_range(bonus_a, bonus_b)
+    exp_match = exposure_similar(exp_a, exp_b)
+
+    rows = [
+        {
+            "Check": "Shared IP Address",
+            "Account A": ", ".join(ip_a),
+            "Account B": ", ".join(ip_b),
+            "Overlap / Value": ", ".join(shared_ips) if shared_ips else "None",
+            "Flagged": "\u2705" if shared_ips else "\u274c",
+            "Points": DETECTION_PARAMS["shared_ip"]["points"] if shared_ips else 0,
+        },
+        {
+            "Check": "Shared Device (CID)",
+            "Account A": ", ".join(cid_a),
+            "Account B": ", ".join(cid_b),
+            "Overlap / Value": ", ".join(shared_cids) if shared_cids else "None",
+            "Flagged": "\u2705" if shared_cids else "\u274c",
+            "Points": DETECTION_PARAMS["shared_cid"]["points"] if shared_cids else 0,
+        },
+        {
+            "Check": "Bonus Similarity (\u00b130%)",
+            "Account A": f"${bonus_a:,.2f}",
+            "Account B": f"${bonus_b:,.2f}",
+            "Overlap / Value": f"\u0394 {abs(bonus_a - bonus_b) / max(bonus_a, bonus_b, 1) * 100:.1f}%" if max(bonus_a, bonus_b) > 0 else "N/A",
+            "Flagged": "\u2705" if bonus_match else "\u274c",
+            "Points": DETECTION_PARAMS["bonus_similarity"]["points"] if bonus_match else 0,
+        },
+        {
+            "Check": "Similar Exposure (\u00b120%)",
+            "Account A": f"${exp_a:,.0f}",
+            "Account B": f"${exp_b:,.0f}",
+            "Overlap / Value": f"\u0394 {abs(exp_a - exp_b) / max(exp_a, exp_b, 1) * 100:.1f}%" if max(exp_a, exp_b) > 0 else "N/A",
+            "Flagged": "\u2705" if exp_match else "\u274c",
+            "Points": DETECTION_PARAMS["similar_exposure"]["points"] if exp_match else 0,
+        },
+    ]
+    return rows
+
+
 def parse_csv_trades(uploaded_file):
     df = pd.read_csv(uploaded_file)
     required = {"Trade ID", "Symbol", "Direction", "Lot Size", "Open Time", "Close Time"}
@@ -539,23 +636,82 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
 
     # ── TAB: Detection Details ───────────────────────────────────────────
     with tab_details:
-        st.subheader("Parameter-by-Parameter Analysis")
 
+        # --- Position-Level Detection ---
+        st.subheader("Position-Level Detection")
+        st.caption("Each row is a matched trade pair between accounts. All trade-level flags are shown per position.")
+
+        pos_rows = build_position_detail_rows(
+            trades_a, trades_b, account_info_a, account_info_b,
+            time_threshold, lot_tolerance,
+        )
+        if pos_rows:
+            pos_df = pd.DataFrame(pos_rows)
+            st.dataframe(
+                pos_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Lot A": st.column_config.NumberColumn(format="%.2f"),
+                    "Lot B": st.column_config.NumberColumn(format="%.2f"),
+                    "Open A": st.column_config.DatetimeColumn(format="YYYY-MM-DD HH:mm:ss"),
+                    "Open B": st.column_config.DatetimeColumn(format="YYYY-MM-DD HH:mm:ss"),
+                    "Close A": st.column_config.DatetimeColumn(format="YYYY-MM-DD HH:mm:ss"),
+                    "Close B": st.column_config.DatetimeColumn(format="YYYY-MM-DD HH:mm:ss"),
+                    "Pair Score": st.column_config.NumberColumn(format="%d pts"),
+                },
+            )
+            total_position_score = sum(r["Pair Score"] for r in pos_rows)
+            st.markdown(f"**Total Position-Level Score: {total_position_score} pts**")
+        else:
+            st.info("No matching positions found between the two accounts.")
+
+        st.divider()
+
+        # --- Account-Level Detection ---
+        st.subheader("Account-Level Detection")
+        st.caption("Checks that compare account metadata: IP addresses, device IDs, bonus amounts, and total exposure.")
+
+        acct_rows = build_account_detail_rows(account_info_a, account_info_b, exp_a, exp_b)
+        acct_df = pd.DataFrame(acct_rows)
+        st.dataframe(
+            acct_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Points": st.column_config.NumberColumn(format="%d pts"),
+            },
+        )
+        total_account_score = sum(r["Points"] for r in acct_rows)
+        st.markdown(f"**Total Account-Level Score: {total_account_score} pts**")
+
+        st.divider()
+
+        # --- Combined Summary Table ---
+        st.subheader("Full Detection Summary")
+        summary_rows = []
         for key, cfg in DETECTION_PARAMS.items():
             matched = results[key]["matched"]
-            status_icon = "\U0001f534" if matched else "\U0001f7e2"
-            pts_text = f"**+{cfg['points']} pts**" if matched else "0 pts"
-            header = f"{status_icon} &nbsp; {cfg['label']} &mdash; {pts_text}"
-
-            with st.expander(header, expanded=matched):
-                st.caption(cfg["desc"])
-                if matched:
-                    st.markdown(f"**Status:** Flagged &nbsp; | &nbsp; **Points:** +{cfg['points']}")
-                    if results[key]["details"]:
-                        for d in results[key]["details"]:
-                            st.markdown(f"- {d}")
-                else:
-                    st.markdown("**Status:** Clear &mdash; no match detected.")
+            summary_rows.append({
+                "Parameter": cfg["label"],
+                "Max Points": cfg["points"],
+                "Flagged": "\u2705" if matched else "\u274c",
+                "Points Scored": cfg["points"] if matched else 0,
+                "Evidence": "; ".join(
+                    d.replace("**", "") for d in results[key]["details"]
+                ) if results[key]["details"] else "\u2014",
+            })
+        summary_df = pd.DataFrame(summary_rows)
+        st.dataframe(
+            summary_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Max Points": st.column_config.NumberColumn(format="%d"),
+                "Points Scored": st.column_config.NumberColumn(format="%d"),
+            },
+        )
+        st.markdown(f"**Grand Total: {total_score} / {MAX_SCORE} pts**")
 
     # ── TAB: Exposure Analysis ───────────────────────────────────────────
     with tab_exposure:
