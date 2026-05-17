@@ -4,3 +4,5 @@ pandas
 matplotlib
 scipy
 seaborn==0.12.2
+plotly
+streamlit
