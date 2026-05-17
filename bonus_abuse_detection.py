@@ -476,6 +476,122 @@ def build_category_table(account_info_a, account_info_b, field, label):
     return rows, shared
 
 
+def connect_mt5(login, password, server, path=None):
+    """Attempt to initialize and log in to MT5. Returns (success, message)."""
+    try:
+        import MetaTrader5 as mt5
+    except ImportError:
+        return False, (
+            "MetaTrader5 package is not installed or unavailable on this platform. "
+            "MT5 requires Windows with a running MT5 terminal. "
+            "Install with: `pip install MetaTrader5`"
+        ), None
+
+    init_kwargs = {}
+    if path:
+        init_kwargs["path"] = path
+    if login:
+        init_kwargs["login"] = int(login)
+    if password:
+        init_kwargs["password"] = password
+    if server:
+        init_kwargs["server"] = server
+
+    if not mt5.initialize(**init_kwargs):
+        err = mt5.last_error()
+        return False, f"MT5 initialization failed: {err}", mt5
+
+    if login and password and server:
+        authorized = mt5.login(int(login), password=password, server=server)
+        if not authorized:
+            err = mt5.last_error()
+            mt5.shutdown()
+            return False, f"MT5 login failed: {err}", mt5
+
+    return True, "Connected successfully.", mt5
+
+
+def fetch_mt5_trades(mt5_module, days_back=30):
+    """Fetch closed deal history from MT5 and return as a DataFrame."""
+    mt5 = mt5_module
+    from datetime import timezone
+    date_to = datetime.now(timezone.utc)
+    date_from = date_to - pd.Timedelta(days=days_back)
+
+    deals = mt5.history_deals_get(date_from, date_to)
+    if deals is None or len(deals) == 0:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(list(deals), columns=deals[0]._asdict().keys())
+
+    # Filter to actual trades (DEAL_TYPE_BUY=0, DEAL_TYPE_SELL=1)
+    df = df[df["type"].isin([0, 1])].copy()
+    if df.empty:
+        return pd.DataFrame()
+
+    type_map = {0: "BUY", 1: "SELL"}
+    df["Direction"] = df["type"].map(type_map)
+    df["Trade ID"] = df["ticket"].astype(str)
+    df["Symbol"] = df["symbol"]
+    df["Lot Size"] = df["volume"]
+    df["Open Time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+    df["Close Time"] = df["Open Time"]  # deals are point-in-time; pair with position if needed
+    df["Open Price"] = df["price"]
+    df["Close Price"] = df["price"]
+
+    return df[["Trade ID", "Symbol", "Direction", "Lot Size",
+               "Open Time", "Close Time", "Open Price", "Close Price"]].reset_index(drop=True)
+
+
+def fetch_mt5_positions(mt5_module):
+    """Fetch currently open positions from MT5 and return as a DataFrame."""
+    mt5 = mt5_module
+    positions = mt5.positions_get()
+    if positions is None or len(positions) == 0:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(list(positions), columns=positions[0]._asdict().keys())
+    type_map = {0: "BUY", 1: "SELL"}
+    df["Direction"] = df["type"].map(type_map)
+    df["Trade ID"] = df["ticket"].astype(str)
+    df["Symbol"] = df["symbol"]
+    df["Lot Size"] = df["volume"]
+    df["Open Time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+    df["Close Time"] = pd.NaT
+    df["Open Price"] = df["price_open"]
+    df["Close Price"] = df["price_current"]
+
+    return df[["Trade ID", "Symbol", "Direction", "Lot Size",
+               "Open Time", "Close Time", "Open Price", "Close Price"]].reset_index(drop=True)
+
+
+def fetch_mt5_account_info(mt5_module):
+    """Fetch account info from MT5."""
+    mt5 = mt5_module
+    info = mt5.account_info()
+    if info is None:
+        return {}
+    info_dict = info._asdict()
+    return {
+        "login": info_dict.get("login", ""),
+        "name": info_dict.get("name", ""),
+        "server": info_dict.get("server", ""),
+        "balance": info_dict.get("balance", 0),
+        "equity": info_dict.get("equity", 0),
+        "currency": info_dict.get("currency", ""),
+        "leverage": info_dict.get("leverage", 0),
+    }
+
+
+def check_mt5_available():
+    """Check if MetaTrader5 package can be imported."""
+    try:
+        import MetaTrader5
+        return True
+    except ImportError:
+        return False
+
+
 def parse_csv_trades(uploaded_file):
     df = pd.read_csv(uploaded_file)
     required = {"Trade ID", "Symbol", "Direction", "Lot Size", "Open Time", "Close Time"}
@@ -551,7 +667,7 @@ with st.sidebar:
     st.subheader("Data Source")
     data_mode = st.radio(
         "Choose input method",
-        ["Sample Data", "Upload CSV", "Manual Entry"],
+        ["Sample Data", "Upload CSV", "Manual Entry", "MT5 Live"],
         label_visibility="collapsed",
     )
 
@@ -659,6 +775,128 @@ elif data_mode == "Manual Entry":
             SAMPLE_TRADES_B.copy(), num_rows="dynamic",
             key="editor_b", use_container_width=True,
         )
+
+elif data_mode == "MT5 Live":
+    mt5_available = check_mt5_available()
+
+    if not mt5_available:
+        st.warning(
+            "**MetaTrader5 package not detected.** "
+            "MT5 Live connection requires:\n"
+            "- **Windows OS** with MetaTrader 5 terminal installed and running\n"
+            "- Python package: `pip install MetaTrader5`\n\n"
+            "This feature does not work on Streamlit Cloud (Linux). "
+            "Run the app locally on a Windows machine with MT5 terminal open.",
+            icon="\u26a0\ufe0f",
+        )
+
+    st.subheader("MT5 Connection")
+    st.caption("Connect to two MT5 accounts to pull trade history for comparison.")
+
+    mt5_col_a, mt5_col_b = st.columns(2)
+
+    with mt5_col_a:
+        st.markdown("**Account A**")
+        mt5_login_a = st.text_input("Login (Account Number)", "", key="mt5_login_a")
+        mt5_pass_a = st.text_input("Password", "", type="password", key="mt5_pass_a")
+        mt5_server_a = st.text_input("Server", "", key="mt5_server_a", placeholder="e.g. MetaQuotes-Demo")
+        mt5_path_a = st.text_input("Terminal Path (optional)", "", key="mt5_path_a",
+                                    placeholder="C:\\Program Files\\MT5\\terminal64.exe")
+
+    with mt5_col_b:
+        st.markdown("**Account B**")
+        mt5_login_b = st.text_input("Login (Account Number)", "", key="mt5_login_b")
+        mt5_pass_b = st.text_input("Password", "", type="password", key="mt5_pass_b")
+        mt5_server_b = st.text_input("Server", "", key="mt5_server_b", placeholder="e.g. MetaQuotes-Demo")
+        mt5_path_b = st.text_input("Terminal Path (optional)", "", key="mt5_path_b",
+                                    placeholder="C:\\Program Files\\MT5\\terminal64.exe")
+
+    mt5_days = st.slider("History Period (days)", min_value=1, max_value=365, value=30, key="mt5_days")
+    mt5_data_type = st.radio(
+        "Data to Fetch",
+        ["Closed Deals (History)", "Open Positions", "Both"],
+        horizontal=True, key="mt5_data_type",
+    )
+
+    mt5_connect_btn = st.button("Connect & Fetch Data", type="primary", use_container_width=True,
+                                 disabled=not mt5_available)
+
+    if mt5_connect_btn and mt5_available:
+        # --- Account A ---
+        with st.status("Connecting to Account A...", expanded=True) as status_a:
+            st.write(f"Initializing MT5 for login **{mt5_login_a}** on **{mt5_server_a}**...")
+            ok_a, msg_a, mt5_mod_a = connect_mt5(
+                mt5_login_a, mt5_pass_a, mt5_server_a,
+                mt5_path_a if mt5_path_a else None,
+            )
+            if ok_a:
+                st.write("Connected. Fetching account info...")
+                acct_info_mt5_a = fetch_mt5_account_info(mt5_mod_a)
+                st.write(f"Account: **{acct_info_mt5_a.get('name', '')}** | "
+                         f"Balance: **{acct_info_mt5_a.get('balance', 0):,.2f} {acct_info_mt5_a.get('currency', '')}**")
+
+                st.write("Fetching trade data...")
+                df_deals_a = pd.DataFrame()
+                df_pos_a = pd.DataFrame()
+                if mt5_data_type in ["Closed Deals (History)", "Both"]:
+                    df_deals_a = fetch_mt5_trades(mt5_mod_a, mt5_days)
+                    st.write(f"Found **{len(df_deals_a)}** closed deals.")
+                if mt5_data_type in ["Open Positions", "Both"]:
+                    df_pos_a = fetch_mt5_positions(mt5_mod_a)
+                    st.write(f"Found **{len(df_pos_a)}** open positions.")
+
+                trades_a = pd.concat([df_deals_a, df_pos_a], ignore_index=True) if not df_deals_a.empty or not df_pos_a.empty else pd.DataFrame()
+                mt5_mod_a.shutdown()
+                status_a.update(label=f"Account A: {len(trades_a)} trades loaded", state="complete")
+            else:
+                st.error(msg_a)
+                status_a.update(label="Account A: Connection failed", state="error")
+
+        # --- Account B ---
+        with st.status("Connecting to Account B...", expanded=True) as status_b:
+            st.write(f"Initializing MT5 for login **{mt5_login_b}** on **{mt5_server_b}**...")
+            ok_b, msg_b, mt5_mod_b = connect_mt5(
+                mt5_login_b, mt5_pass_b, mt5_server_b,
+                mt5_path_b if mt5_path_b else None,
+            )
+            if ok_b:
+                st.write("Connected. Fetching account info...")
+                acct_info_mt5_b = fetch_mt5_account_info(mt5_mod_b)
+                st.write(f"Account: **{acct_info_mt5_b.get('name', '')}** | "
+                         f"Balance: **{acct_info_mt5_b.get('balance', 0):,.2f} {acct_info_mt5_b.get('currency', '')}**")
+
+                st.write("Fetching trade data...")
+                df_deals_b = pd.DataFrame()
+                df_pos_b = pd.DataFrame()
+                if mt5_data_type in ["Closed Deals (History)", "Both"]:
+                    df_deals_b = fetch_mt5_trades(mt5_mod_b, mt5_days)
+                    st.write(f"Found **{len(df_deals_b)}** closed deals.")
+                if mt5_data_type in ["Open Positions", "Both"]:
+                    df_pos_b = fetch_mt5_positions(mt5_mod_b)
+                    st.write(f"Found **{len(df_pos_b)}** open positions.")
+
+                trades_b = pd.concat([df_deals_b, df_pos_b], ignore_index=True) if not df_deals_b.empty or not df_pos_b.empty else pd.DataFrame()
+                mt5_mod_b.shutdown()
+                status_b.update(label=f"Account B: {len(trades_b)} trades loaded", state="complete")
+            else:
+                st.error(msg_b)
+                status_b.update(label="Account B: Connection failed", state="error")
+
+        if trades_a is not None and not trades_a.empty:
+            st.session_state["mt5_trades_a"] = trades_a
+        if trades_b is not None and not trades_b.empty:
+            st.session_state["mt5_trades_b"] = trades_b
+
+    # Restore from session state if already fetched
+    if "mt5_trades_a" in st.session_state:
+        trades_a = st.session_state["mt5_trades_a"]
+    if "mt5_trades_b" in st.session_state:
+        trades_b = st.session_state["mt5_trades_b"]
+
+    if trades_a is not None and not trades_a.empty:
+        st.success(f"Account A: **{len(trades_a)}** trades loaded from MT5.", icon="\u2705")
+    if trades_b is not None and not trades_b.empty:
+        st.success(f"Account B: **{len(trades_b)}** trades loaded from MT5.", icon="\u2705")
 
 # ---------------------------------------------------------------------------
 # Analysis
