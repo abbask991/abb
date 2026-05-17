@@ -2,35 +2,33 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
-from datetime import datetime, timedelta
-import hashlib
+from datetime import datetime
 import json
-import io
 
 # ---------------------------------------------------------------------------
 # Configuration & Constants
 # ---------------------------------------------------------------------------
 
 DETECTION_PARAMS = {
-    "same_symbol": {"label": "Same Symbol", "points": 10},
-    "opposite_direction": {"label": "Opposite Direction", "points": 20},
-    "open_time_match": {"label": "Open Time Match", "points": 15},
-    "close_time_match": {"label": "Close Time Match", "points": 15},
-    "same_lot_size": {"label": "Same Lot Size", "points": 10},
-    "shared_cid": {"label": "Shared CID (Device)", "points": 20},
-    "shared_ip": {"label": "Shared IP", "points": 20},
-    "bonus_similarity": {"label": "Bonus \u00b130% Similarity", "points": 10},
-    "similar_exposure": {"label": "Similar Total Exposure", "points": 15},
+    "same_symbol":        {"label": "Same Symbol",           "points": 10, "icon": "1f4ca", "desc": "Both accounts trade the same instrument"},
+    "opposite_direction": {"label": "Opposite Direction",    "points": 20, "icon": "1f500", "desc": "One buys while the other sells (hedging)"},
+    "open_time_match":    {"label": "Open Time Match",       "points": 15, "icon": "23f1",  "desc": "Positions opened at near-identical time"},
+    "close_time_match":   {"label": "Close Time Match",      "points": 15, "icon": "23f2",  "desc": "Positions closed at near-identical time"},
+    "same_lot_size":      {"label": "Same Lot Size",         "points": 10, "icon": "1f4e6", "desc": "Matching or highly similar trade volume"},
+    "shared_cid":         {"label": "Shared Device (CID)",   "points": 20, "icon": "1f4f1", "desc": "Accounts accessed from the same device"},
+    "shared_ip":          {"label": "Shared IP Address",     "points": 20, "icon": "1f310", "desc": "Accounts connected from the same IP"},
+    "bonus_similarity":   {"label": "Bonus Similarity",      "points": 10, "icon": "1f4b0", "desc": "Bonus values within \u00b130% range"},
+    "similar_exposure":   {"label": "Similar Exposure",      "points": 15, "icon": "1f4ca", "desc": "Total market exposure is highly similar"},
 }
 
 MAX_SCORE = sum(p["points"] for p in DETECTION_PARAMS.values())
 
 RISK_LEVELS = [
-    (0, 20, "Low Risk", "#22c55e", "Monitor activity. No immediate action required."),
-    (21, 40, "Medium Risk", "#f59e0b", "Review account behavior. Monitor withdrawals. Flag for observation."),
-    (41, 60, "High Risk", "#f97316", "Temporary withdrawal review. Manual investigation. Compliance review required."),
-    (61, MAX_SCORE, "Critical Risk", "#ef4444", "Immediate fraud investigation. Bonus cancellation consideration. Potential account suspension. Escalate to Risk & Compliance."),
+    (0,  20, "Low",      "#22c55e", "Monitor activity. No immediate action required."),
+    (21, 40, "Medium",   "#eab308", "Review account behavior. Monitor withdrawals. Flag for observation."),
+    (41, 60, "High",     "#f97316", "Temporary withdrawal review. Manual investigation. Compliance review required."),
+    (61, MAX_SCORE, "Critical", "#ef4444",
+     "Immediate fraud investigation. Bonus cancellation consideration. Potential account suspension. Escalate to Risk & Compliance Department."),
 ]
 
 SAMPLE_TRADES_A = pd.DataFrame({
@@ -163,28 +161,28 @@ def analyze_pair(trades_a, trades_b, account_info_a, account_info_b,
         if ta["Symbol"] == tb["Symbol"]:
             results["same_symbol"]["matched"] = True
             results["same_symbol"]["details"].append(
-                f"{pair_label}: both trade {ta['Symbol']}")
+                f"{pair_label}: both trade **{ta['Symbol']}**")
 
             if ta["Direction"] != tb["Direction"]:
                 results["opposite_direction"]["matched"] = True
                 results["opposite_direction"]["details"].append(
-                    f"{pair_label}: {ta['Direction']} vs {tb['Direction']} on {ta['Symbol']}")
+                    f"{pair_label}: **{ta['Direction']}** vs **{tb['Direction']}** on {ta['Symbol']}")
 
             if dt <= time_threshold_sec:
                 results["open_time_match"]["matched"] = True
                 results["open_time_match"]["details"].append(
-                    f"{pair_label}: open times differ by {dt:.1f}s")
+                    f"{pair_label}: open times differ by **{dt:.1f}s**")
 
             close_dt = time_diff_seconds(ta["Close Time"], tb["Close Time"])
             if close_dt <= time_threshold_sec:
                 results["close_time_match"]["matched"] = True
                 results["close_time_match"]["details"].append(
-                    f"{pair_label}: close times differ by {close_dt:.1f}s")
+                    f"{pair_label}: close times differ by **{close_dt:.1f}s**")
 
             if lot_similarity(ta["Lot Size"], tb["Lot Size"], lot_tolerance):
                 results["same_lot_size"]["matched"] = True
                 results["same_lot_size"]["details"].append(
-                    f"{pair_label}: {ta['Lot Size']} vs {tb['Lot Size']} lots")
+                    f"{pair_label}: **{ta['Lot Size']}** vs **{tb['Lot Size']}** lots")
 
     cid_a = set(account_info_a.get("cids", []))
     cid_b = set(account_info_b.get("cids", []))
@@ -192,7 +190,7 @@ def analyze_pair(trades_a, trades_b, account_info_a, account_info_b,
     if shared_cids:
         results["shared_cid"]["matched"] = True
         results["shared_cid"]["details"].append(
-            f"Shared devices: {', '.join(shared_cids)}")
+            f"Shared devices: **{', '.join(shared_cids)}**")
 
     ip_a = set(account_info_a.get("ips", []))
     ip_b = set(account_info_b.get("ips", []))
@@ -200,35 +198,26 @@ def analyze_pair(trades_a, trades_b, account_info_a, account_info_b,
     if shared_ips:
         results["shared_ip"]["matched"] = True
         results["shared_ip"]["details"].append(
-            f"Shared IPs: {', '.join(shared_ips)}")
+            f"Shared IPs: **{', '.join(shared_ips)}**")
 
     bonus_a = account_info_a.get("bonus", 0)
     bonus_b = account_info_b.get("bonus", 0)
     if bonus_a > 0 and bonus_b > 0 and bonus_within_range(bonus_a, bonus_b):
         results["bonus_similarity"]["matched"] = True
         results["bonus_similarity"]["details"].append(
-            f"${bonus_a:.2f} vs ${bonus_b:.2f} (within \u00b130%)")
+            f"**${bonus_a:.2f}** vs **${bonus_b:.2f}** (within \u00b130%)")
 
     exp_a = compute_exposure(trades_a)
     exp_b = compute_exposure(trades_b)
     if exposure_similar(exp_a, exp_b):
         results["similar_exposure"]["matched"] = True
         results["similar_exposure"]["details"].append(
-            f"Exposure A: ${exp_a:,.2f} vs B: ${exp_b:,.2f}")
+            f"Exposure A: **${exp_a:,.2f}** vs B: **${exp_b:,.2f}**")
 
     total_score = sum(
         DETECTION_PARAMS[k]["points"] for k, v in results.items() if v["matched"]
     )
     return results, total_score, exp_a, exp_b
-
-
-def build_radar_data(results):
-    labels = []
-    values = []
-    for key, cfg in DETECTION_PARAMS.items():
-        labels.append(cfg["label"])
-        values.append(cfg["points"] if results[key]["matched"] else 0)
-    return labels, values
 
 
 def parse_csv_trades(uploaded_file):
@@ -253,85 +242,44 @@ def parse_csv_trades(uploaded_file):
 
 
 # ---------------------------------------------------------------------------
-# Page config
+# Page config & styling
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Bonus Abuse Detection System",
+    page_title="Bonus Abuse Detection",
     page_icon="\U0001f6e1\ufe0f",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 0.25rem;
-    }
-    .sub-header {
-        font-size: 1rem;
-        color: #64748b;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    .block-container { padding-top: 2rem; }
+    div[data-testid="stMetric"] {
+        background: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.2);
         border-radius: 12px;
-        padding: 1.25rem;
-        border-left: 4px solid #3b82f6;
-    }
-    .risk-badge {
-        display: inline-block;
-        padding: 0.5rem 1.5rem;
-        border-radius: 9999px;
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: #fff;
-    }
-    .param-row {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-    }
-    .param-matched {
-        background: #fef2f2;
-        border-left: 4px solid #ef4444;
-    }
-    .param-clear {
-        background: #f0fdf4;
-        border-left: 4px solid #22c55e;
-    }
-    .detail-text {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-left: 1rem;
-    }
-    .score-display {
-        font-size: 4rem;
-        font-weight: 800;
-        text-align: center;
-        line-height: 1.1;
-    }
-    .workflow-step {
-        background: #f1f5f9;
-        border-radius: 10px;
         padding: 1rem 1.25rem;
-        text-align: center;
-        border: 1px solid #e2e8f0;
     }
-    .workflow-step h4 {
-        margin: 0 0 0.25rem 0;
-        color: #1e293b;
+    div[data-testid="stMetric"] label {
+        color: #94a3b8 !important;
     }
-    .workflow-step p {
-        margin: 0;
-        color: #64748b;
-        font-size: 0.85rem;
+    div[data-testid="stExpander"] {
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: 10px;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 8px 20px;
+    }
+    section[data-testid="stSidebar"] {
+        border-right: 1px solid rgba(99, 102, 241, 0.15);
+    }
+    section[data-testid="stSidebar"] > div {
+        padding-top: 1.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -341,39 +289,41 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
-    st.markdown("## Configuration")
-    st.markdown("---")
+    st.image("https://img.icons8.com/fluency/96/shield.png", width=48)
+    st.title("Configuration")
 
+    st.subheader("Data Source")
     data_mode = st.radio(
-        "Data Source",
+        "Choose input method",
         ["Sample Data", "Upload CSV", "Manual Entry"],
-        help="Choose how to provide trade data for analysis.",
+        label_visibility="collapsed",
     )
 
-    st.markdown("### Detection Thresholds")
-    time_threshold = st.selectbox(
-        "Time Match Threshold",
-        [5, 10, 30, 60, 120, 300],
-        index=2,
-        format_func=lambda x: f"{x} seconds",
-        help="Maximum time difference (seconds) to consider trades synchronized.",
+    st.divider()
+    st.subheader("Detection Thresholds")
+    time_threshold = st.select_slider(
+        "Time Match Window",
+        options=[5, 10, 30, 60, 120, 300],
+        value=30,
+        format_func=lambda x: f"{x}s" if x < 60 else f"{x // 60}m",
     )
     lot_tolerance = st.slider(
-        "Lot Size Tolerance (%)",
+        "Lot Size Tolerance",
         min_value=1, max_value=20, value=5,
-        help="Percentage tolerance for lot size comparison.",
+        format="%d%%",
     ) / 100.0
 
-    st.markdown("### Account Metadata")
-    st.markdown("**Account A**")
-    ips_a_str = st.text_input("IPs (comma-sep)", "192.168.1.10, 10.0.0.5", key="ip_a")
-    cids_a_str = st.text_input("Device IDs (comma-sep)", "DEV-001, DEV-003", key="cid_a")
-    bonus_a = st.number_input("Bonus ($)", min_value=0.0, value=200.0, step=10.0, key="bonus_a")
+    st.divider()
+    st.subheader("Account A")
+    ips_a_str = st.text_input("IP Addresses", "192.168.1.10, 10.0.0.5", key="ip_a")
+    cids_a_str = st.text_input("Device IDs", "DEV-001, DEV-003", key="cid_a")
+    bonus_a = st.number_input("Bonus Amount ($)", min_value=0.0, value=200.0, step=10.0, key="bonus_a")
 
-    st.markdown("**Account B**")
-    ips_b_str = st.text_input("IPs (comma-sep)", "192.168.1.10, 10.0.0.8", key="ip_b")
-    cids_b_str = st.text_input("Device IDs (comma-sep)", "DEV-001, DEV-004", key="cid_b")
-    bonus_b = st.number_input("Bonus ($)", min_value=0.0, value=170.0, step=10.0, key="bonus_b")
+    st.divider()
+    st.subheader("Account B")
+    ips_b_str = st.text_input("IP Addresses", "192.168.1.10, 10.0.0.8", key="ip_b")
+    cids_b_str = st.text_input("Device IDs", "DEV-001, DEV-004", key="cid_b")
+    bonus_b = st.number_input("Bonus Amount ($)", min_value=0.0, value=170.0, step=10.0, key="bonus_b")
 
 account_info_a = {
     "ips": [x.strip() for x in ips_a_str.split(",") if x.strip()],
@@ -390,11 +340,13 @@ account_info_b = {
 # Header
 # ---------------------------------------------------------------------------
 
-st.markdown('<p class="main-header">Bonus Abuse Detection System</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="sub-header">Identify suspicious trading behavior and potential bonus exploitation between trading accounts</p>',
-    unsafe_allow_html=True,
-)
+col_title, col_badge = st.columns([4, 1])
+with col_title:
+    st.title("Bonus Abuse Detection System")
+    st.caption("Identify suspicious trading behavior and potential bonus exploitation between accounts")
+with col_badge:
+    st.markdown("")
+    st.markdown(f"**Engine v1.0** &nbsp;|&nbsp; Max Score: **{MAX_SCORE}**")
 
 # ---------------------------------------------------------------------------
 # Load trade data
@@ -410,16 +362,15 @@ if data_mode == "Sample Data":
 elif data_mode == "Upload CSV":
     col_u1, col_u2 = st.columns(2)
     with col_u1:
-        st.markdown("#### Account A Trades CSV")
-        file_a = st.file_uploader("Upload Account A", type=["csv"], key="csv_a")
+        file_a = st.file_uploader("Account A Trades", type=["csv"], key="csv_a")
     with col_u2:
-        st.markdown("#### Account B Trades CSV")
-        file_b = st.file_uploader("Upload Account B", type=["csv"], key="csv_b")
+        file_b = st.file_uploader("Account B Trades", type=["csv"], key="csv_b")
 
     st.info(
-        "CSV must contain columns: **Trade ID**, **Symbol**, **Direction**, "
+        "Required columns: **Trade ID**, **Symbol**, **Direction**, "
         "**Lot Size**, **Open Time**, **Close Time**. "
-        "Optional: **Open Price**, **Close Price**."
+        "Optional: **Open Price**, **Close Price**.",
+        icon="\u2139\ufe0f",
     )
     if file_a:
         trades_a = parse_csv_trades(file_a)
@@ -427,24 +378,16 @@ elif data_mode == "Upload CSV":
         trades_b = parse_csv_trades(file_b)
 
 elif data_mode == "Manual Entry":
-    st.markdown("#### Enter Trade Data")
-    tab_a, tab_b = st.tabs(["Account A Trades", "Account B Trades"])
-
+    tab_a, tab_b = st.tabs(["\U0001f4cb Account A Trades", "\U0001f4cb Account B Trades"])
     with tab_a:
-        st.markdown("Edit the table below to define Account A trades.")
         trades_a = st.data_editor(
-            SAMPLE_TRADES_A.copy(),
-            num_rows="dynamic",
-            key="editor_a",
-            use_container_width=True,
+            SAMPLE_TRADES_A.copy(), num_rows="dynamic",
+            key="editor_a", use_container_width=True,
         )
     with tab_b:
-        st.markdown("Edit the table below to define Account B trades.")
         trades_b = st.data_editor(
-            SAMPLE_TRADES_B.copy(),
-            num_rows="dynamic",
-            key="editor_b",
-            use_container_width=True,
+            SAMPLE_TRADES_B.copy(), num_rows="dynamic",
+            key="editor_b", use_container_width=True,
         )
 
 # ---------------------------------------------------------------------------
@@ -458,262 +401,378 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
     )
     risk_label, risk_color, risk_action = get_risk_level(total_score)
     matched_count = sum(1 for v in results.values() if v["matched"])
+    score_pct = int(round(total_score / MAX_SCORE * 100))
 
-    # --- Top metrics row ---
-    st.markdown("---")
+    # ── Top Metrics ──────────────────────────────────────────────────────
+    st.divider()
     m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.markdown(
-            f'<div class="metric-card"><h4 style="margin:0;color:#64748b">Risk Score</h4>'
-            f'<p style="font-size:2.5rem;font-weight:800;margin:0;color:{risk_color}">{total_score}</p>'
-            f'<p style="margin:0;color:#94a3b8">out of {MAX_SCORE}</p></div>',
-            unsafe_allow_html=True,
-        )
-    with m2:
-        st.markdown(
-            f'<div class="metric-card"><h4 style="margin:0;color:#64748b">Risk Level</h4>'
-            f'<p><span class="risk-badge" style="background:{risk_color}">{risk_label}</span></p></div>',
-            unsafe_allow_html=True,
-        )
-    with m3:
-        st.markdown(
-            f'<div class="metric-card"><h4 style="margin:0;color:#64748b">Flags Triggered</h4>'
-            f'<p style="font-size:2.5rem;font-weight:800;margin:0;color:#1e293b">{matched_count}</p>'
-            f'<p style="margin:0;color:#94a3b8">of {len(DETECTION_PARAMS)} checks</p></div>',
-            unsafe_allow_html=True,
-        )
-    with m4:
-        st.markdown(
-            f'<div class="metric-card"><h4 style="margin:0;color:#64748b">Trade Pairs</h4>'
-            f'<p style="font-size:2.5rem;font-weight:800;margin:0;color:#1e293b">'
-            f'{len(trades_a)} / {len(trades_b)}</p>'
-            f'<p style="margin:0;color:#94a3b8">Account A / B</p></div>',
-            unsafe_allow_html=True,
-        )
+    m1.metric("Risk Score", f"{total_score} / {MAX_SCORE}", f"{score_pct}%")
+    m2.metric("Risk Level", risk_label)
+    m3.metric("Flags Triggered", f"{matched_count} / {len(DETECTION_PARAMS)}")
+    m4.metric("Trades Analyzed", f"{len(trades_a)} + {len(trades_b)}")
 
-    st.markdown("")
+    # ── Main Content Tabs ────────────────────────────────────────────────
+    tab_overview, tab_details, tab_exposure, tab_trades, tab_workflow = st.tabs([
+        "\U0001f3af Overview",
+        "\U0001f50d Detection Details",
+        "\U0001f4b9 Exposure Analysis",
+        "\U0001f4c4 Trade Data",
+        "\U0001f4cb Workflow & Export",
+    ])
 
-    # --- Detailed results + charts ---
-    col_left, col_right = st.columns([3, 2])
+    # ── TAB: Overview ────────────────────────────────────────────────────
+    with tab_overview:
+        col_gauge, col_radar = st.columns(2)
 
-    with col_left:
-        st.markdown("### Detection Results")
+        with col_gauge:
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=total_score,
+                number=dict(font=dict(size=52, color=risk_color)),
+                delta=dict(reference=40, increasing=dict(color="#ef4444"), decreasing=dict(color="#22c55e")),
+                gauge=dict(
+                    axis=dict(range=[0, MAX_SCORE], tickwidth=2, tickcolor="#334155",
+                              tickfont=dict(color="#94a3b8")),
+                    bgcolor="#1e293b",
+                    bar=dict(color=risk_color, thickness=0.3),
+                    steps=[
+                        dict(range=[0, 20], color="rgba(34,197,94,0.15)"),
+                        dict(range=[21, 40], color="rgba(234,179,8,0.15)"),
+                        dict(range=[41, 60], color="rgba(249,115,22,0.15)"),
+                        dict(range=[61, MAX_SCORE], color="rgba(239,68,68,0.15)"),
+                    ],
+                    threshold=dict(
+                        line=dict(color=risk_color, width=4),
+                        thickness=0.85, value=total_score,
+                    ),
+                ),
+                title=dict(text="RISK SCORE", font=dict(size=16, color="#94a3b8")),
+            ))
+            fig_gauge.update_layout(
+                height=350,
+                margin=dict(l=30, r=30, t=60, b=20),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#e2e8f0"),
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+        with col_radar:
+            labels = [DETECTION_PARAMS[k]["label"] for k in DETECTION_PARAMS]
+            values = [DETECTION_PARAMS[k]["points"] if results[k]["matched"] else 0 for k in DETECTION_PARAMS]
+            max_vals = [DETECTION_PARAMS[k]["points"] for k in DETECTION_PARAMS]
+
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=max_vals + [max_vals[0]],
+                theta=labels + [labels[0]],
+                fill="toself",
+                fillcolor="rgba(99,102,241,0.06)",
+                line=dict(color="rgba(99,102,241,0.25)", width=1, dash="dot"),
+                name="Maximum",
+            ))
+            fig_radar.add_trace(go.Scatterpolar(
+                r=values + [values[0]],
+                theta=labels + [labels[0]],
+                fill="toself",
+                fillcolor=f"rgba({int(risk_color[1:3],16)},{int(risk_color[3:5],16)},{int(risk_color[5:7],16)},0.2)",
+                line=dict(color=risk_color, width=2.5),
+                name="Detected",
+                marker=dict(size=6, color=risk_color),
+            ))
+            fig_radar.update_layout(
+                polar=dict(
+                    bgcolor="rgba(0,0,0,0)",
+                    radialaxis=dict(visible=True, range=[0, 25], showticklabels=False,
+                                    gridcolor="rgba(99,102,241,0.1)"),
+                    angularaxis=dict(tickfont=dict(size=10, color="#94a3b8"),
+                                     gridcolor="rgba(99,102,241,0.1)"),
+                ),
+                showlegend=True,
+                legend=dict(orientation="h", y=-0.12, font=dict(color="#94a3b8")),
+                margin=dict(l=60, r=60, t=40, b=40),
+                height=350,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+
+        # Score breakdown bar
+        bar_labels = [DETECTION_PARAMS[k]["label"] for k in DETECTION_PARAMS]
+        bar_scored = [DETECTION_PARAMS[k]["points"] if results[k]["matched"] else 0 for k in DETECTION_PARAMS]
+        bar_max = [DETECTION_PARAMS[k]["points"] for k in DETECTION_PARAMS]
+
+        fig_bar = go.Figure()
+        fig_bar.add_trace(go.Bar(
+            x=bar_labels, y=bar_max, name="Max Points",
+            marker_color="rgba(99,102,241,0.15)",
+            marker_line=dict(color="rgba(99,102,241,0.3)", width=1),
+        ))
+        fig_bar.add_trace(go.Bar(
+            x=bar_labels, y=bar_scored, name="Points Scored",
+            marker_color=[risk_color if s > 0 else "rgba(99,102,241,0.08)" for s in bar_scored],
+            text=[f"+{s}" if s > 0 else "" for s in bar_scored],
+            textposition="outside",
+            textfont=dict(color=risk_color, size=12, family="monospace"),
+        ))
+        fig_bar.update_layout(
+            barmode="overlay", height=300,
+            margin=dict(l=40, r=20, t=30, b=80),
+            legend=dict(orientation="h", y=1.08, font=dict(color="#94a3b8")),
+            yaxis=dict(title="Points", gridcolor="rgba(99,102,241,0.08)",
+                       tickfont=dict(color="#94a3b8")),
+            xaxis=dict(tickfont=dict(color="#94a3b8", size=9), tickangle=-35),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # Risk action callout
+        if total_score <= 20:
+            st.success(f"**{risk_label} Risk** \u2014 {risk_action}", icon="\u2705")
+        elif total_score <= 40:
+            st.warning(f"**{risk_label} Risk** \u2014 {risk_action}", icon="\u26a0\ufe0f")
+        elif total_score <= 60:
+            st.warning(f"**{risk_label} Risk** \u2014 {risk_action}", icon="\U0001f6a8")
+        else:
+            st.error(f"**{risk_label} Risk** \u2014 {risk_action}", icon="\U0001f6a8")
+
+    # ── TAB: Detection Details ───────────────────────────────────────────
+    with tab_details:
+        st.subheader("Parameter-by-Parameter Analysis")
+
         for key, cfg in DETECTION_PARAMS.items():
             matched = results[key]["matched"]
-            css_class = "param-matched" if matched else "param-clear"
-            icon = "\u274c" if matched else "\u2705"
-            pts = f"+{cfg['points']} pts" if matched else "0 pts"
-            st.markdown(
-                f'<div class="param-row {css_class}">'
-                f'<span style="font-size:1.1rem;min-width:1.5rem">{icon}</span>'
-                f'<span style="flex:1;font-weight:600;margin-left:0.5rem">{cfg["label"]}</span>'
-                f'<span style="font-weight:700;color:{risk_color if matched else "#22c55e"}">{pts}</span>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            if matched and results[key]["details"]:
-                for d in results[key]["details"]:
-                    st.markdown(f'<p class="detail-text">\u2022 {d}</p>', unsafe_allow_html=True)
+            status_icon = "\U0001f534" if matched else "\U0001f7e2"
+            pts_text = f"**+{cfg['points']} pts**" if matched else "0 pts"
+            header = f"{status_icon} &nbsp; {cfg['label']} &mdash; {pts_text}"
 
-    with col_right:
-        st.markdown("### Risk Radar")
-        labels, values = build_radar_data(results)
-        max_vals = [DETECTION_PARAMS[k]["points"] for k in DETECTION_PARAMS]
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=max_vals + [max_vals[0]],
-            theta=labels + [labels[0]],
-            fill="toself",
-            fillcolor="rgba(59,130,246,0.08)",
-            line=dict(color="rgba(59,130,246,0.3)", width=1),
-            name="Maximum",
-        ))
-        fig_radar.add_trace(go.Scatterpolar(
-            r=values + [values[0]],
-            theta=labels + [labels[0]],
-            fill="toself",
-            fillcolor=f"rgba({int(risk_color[1:3],16)},{int(risk_color[3:5],16)},{int(risk_color[5:7],16)},0.25)",
-            line=dict(color=risk_color, width=2),
-            name="Detected",
-        ))
-        fig_radar.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 25], showticklabels=False),
-                angularaxis=dict(tickfont=dict(size=10)),
-            ),
-            showlegend=True,
-            legend=dict(orientation="h", y=-0.15),
-            margin=dict(l=40, r=40, t=20, b=40),
-            height=380,
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
+            with st.expander(header, expanded=matched):
+                st.caption(cfg["desc"])
+                if matched:
+                    st.markdown(f"**Status:** Flagged &nbsp; | &nbsp; **Points:** +{cfg['points']}")
+                    if results[key]["details"]:
+                        for d in results[key]["details"]:
+                            st.markdown(f"- {d}")
+                else:
+                    st.markdown("**Status:** Clear &mdash; no match detected.")
 
-        # Score gauge
-        st.markdown("### Score Gauge")
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=total_score,
-            gauge=dict(
-                axis=dict(range=[0, MAX_SCORE], tickwidth=1),
-                bar=dict(color=risk_color),
-                steps=[
-                    dict(range=[0, 20], color="#dcfce7"),
-                    dict(range=[21, 40], color="#fef9c3"),
-                    dict(range=[41, 60], color="#ffedd5"),
-                    dict(range=[61, MAX_SCORE], color="#fee2e2"),
-                ],
-                threshold=dict(line=dict(color="#1e293b", width=3), thickness=0.8, value=total_score),
-            ),
-            title=dict(text="Risk Score"),
-        ))
-        fig_gauge.update_layout(height=260, margin=dict(l=30, r=30, t=50, b=10))
-        st.plotly_chart(fig_gauge, use_container_width=True)
+    # ── TAB: Exposure Analysis ───────────────────────────────────────────
+    with tab_exposure:
+        st.subheader("Total Market Exposure")
 
-    # --- Score breakdown bar chart ---
-    st.markdown("### Score Breakdown")
-    bar_labels = [DETECTION_PARAMS[k]["label"] for k in DETECTION_PARAMS]
-    bar_scored = [DETECTION_PARAMS[k]["points"] if results[k]["matched"] else 0 for k in DETECTION_PARAMS]
-    bar_max = [DETECTION_PARAMS[k]["points"] for k in DETECTION_PARAMS]
-    bar_colors = [risk_color if results[k]["matched"] else "#e2e8f0" for k in DETECTION_PARAMS]
+        ex1, ex2 = st.columns(2)
+        ex1.metric("Account A Exposure", f"${exp_a:,.0f}")
+        ex2.metric("Account B Exposure", f"${exp_b:,.0f}")
 
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(
-        x=bar_labels, y=bar_max, name="Max Points",
-        marker_color="#e2e8f0", text=bar_max, textposition="outside",
-    ))
-    fig_bar.add_trace(go.Bar(
-        x=bar_labels, y=bar_scored, name="Scored",
-        marker_color=bar_colors, text=bar_scored, textposition="outside",
-    ))
-    fig_bar.update_layout(
-        barmode="overlay", height=350,
-        margin=dict(l=40, r=20, t=20, b=80),
-        legend=dict(orientation="h", y=1.08),
-        yaxis_title="Points",
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    # --- Exposure comparison ---
-    st.markdown("### Exposure Comparison")
-    ec1, ec2 = st.columns(2)
-    with ec1:
-        fig_exp = go.Figure(go.Bar(
-            x=["Account A", "Account B"],
-            y=[exp_a, exp_b],
-            marker_color=["#3b82f6", "#8b5cf6"],
-            text=[f"${exp_a:,.0f}", f"${exp_b:,.0f}"],
-            textposition="outside",
-        ))
-        fig_exp.update_layout(
-            height=300, margin=dict(l=40, r=20, t=20, b=40),
-            yaxis_title="Total Exposure ($)",
-        )
-        st.plotly_chart(fig_exp, use_container_width=True)
-    with ec2:
-        if exp_a + exp_b > 0:
-            fig_pie = go.Figure(go.Pie(
-                labels=["Account A", "Account B"],
-                values=[exp_a, exp_b],
-                hole=0.5,
-                marker=dict(colors=["#3b82f6", "#8b5cf6"]),
-                textinfo="percent+label",
+        col_bar_exp, col_pie_exp = st.columns(2)
+        with col_bar_exp:
+            fig_exp = go.Figure(go.Bar(
+                x=["Account A", "Account B"],
+                y=[exp_a, exp_b],
+                marker=dict(
+                    color=["rgba(99,102,241,0.7)", "rgba(168,85,247,0.7)"],
+                    line=dict(color=["#6366f1", "#a855f7"], width=2),
+                ),
+                text=[f"${exp_a:,.0f}", f"${exp_b:,.0f}"],
+                textposition="outside",
+                textfont=dict(color="#e2e8f0"),
             ))
-            fig_pie.update_layout(
-                height=300, margin=dict(l=20, r=20, t=20, b=20),
-                showlegend=False,
+            fig_exp.update_layout(
+                height=350, margin=dict(l=40, r=20, t=30, b=40),
+                yaxis=dict(title="Exposure ($)", gridcolor="rgba(99,102,241,0.08)",
+                           tickfont=dict(color="#94a3b8")),
+                xaxis=dict(tickfont=dict(color="#e2e8f0", size=13)),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
             )
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_exp, use_container_width=True)
 
-    # --- Trade Data Viewer ---
-    st.markdown("### Trade Data")
-    td1, td2 = st.columns(2)
-    with td1:
-        st.markdown("**Account A**")
-        st.dataframe(trades_a, use_container_width=True, hide_index=True)
-    with td2:
-        st.markdown("**Account B**")
-        st.dataframe(trades_b, use_container_width=True, hide_index=True)
+        with col_pie_exp:
+            if exp_a + exp_b > 0:
+                fig_pie = go.Figure(go.Pie(
+                    labels=["Account A", "Account B"],
+                    values=[exp_a, exp_b],
+                    hole=0.55,
+                    marker=dict(
+                        colors=["rgba(99,102,241,0.8)", "rgba(168,85,247,0.8)"],
+                        line=dict(color="#0f172a", width=3),
+                    ),
+                    textinfo="percent+label",
+                    textfont=dict(color="#e2e8f0", size=12),
+                    hoverinfo="label+value+percent",
+                ))
+                fig_pie.update_layout(
+                    height=350, margin=dict(l=20, r=20, t=30, b=20),
+                    showlegend=False,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    annotations=[dict(
+                        text=f"${(exp_a+exp_b):,.0f}",
+                        x=0.5, y=0.5, font_size=14,
+                        font_color="#94a3b8", showarrow=False,
+                    )],
+                )
+                st.plotly_chart(fig_pie, use_container_width=True)
 
-    # --- Recommended Actions ---
-    st.markdown("### Recommended Actions")
-    st.markdown(
-        f'<div style="background:{risk_color}15;border-left:4px solid {risk_color};'
-        f'border-radius:8px;padding:1rem 1.5rem">'
-        f'<h4 style="margin:0 0 0.5rem 0;color:{risk_color}">{risk_label} \u2014 Action Plan</h4>'
-        f'<p style="margin:0;color:#334155">{risk_action}</p></div>',
-        unsafe_allow_html=True,
-    )
+        if exposure_similar(exp_a, exp_b):
+            st.warning("Exposures are within 20% of each other \u2014 flagged as similar.", icon="\u26a0\ufe0f")
+        else:
+            st.info("Exposure difference exceeds 20% threshold \u2014 not flagged.", icon="\u2139\ufe0f")
 
-    # --- Investigation Workflow ---
-    st.markdown("### Investigation Workflow")
-    wf1, wf2, wf3, wf4 = st.columns(4)
-    steps = [
-        ("Step 1", "Detection", "Engine identifies suspicious linked accounts"),
-        ("Step 2", "Scoring", "Risk score calculated automatically"),
-        ("Step 3", "Analyst Review", "Review trading, device, IP, bonus history"),
-        ("Step 4", "Decision", "Clear / Remove bonus / Restrict / Suspend / Escalate"),
-    ]
-    for col, (step, title, desc) in zip([wf1, wf2, wf3, wf4], steps):
-        with col:
-            st.markdown(
-                f'<div class="workflow-step">'
-                f'<p style="color:#3b82f6;font-weight:700;margin:0">{step}</p>'
-                f'<h4>{title}</h4>'
-                f'<p>{desc}</p></div>',
-                unsafe_allow_html=True,
+    # ── TAB: Trade Data ──────────────────────────────────────────────────
+    with tab_trades:
+        td1, td2 = st.columns(2)
+        with td1:
+            st.subheader("Account A")
+            st.dataframe(
+                trades_a, use_container_width=True, hide_index=True,
+                column_config={
+                    "Direction": st.column_config.TextColumn(width="small"),
+                    "Lot Size": st.column_config.NumberColumn(format="%.2f"),
+                },
+            )
+        with td2:
+            st.subheader("Account B")
+            st.dataframe(
+                trades_b, use_container_width=True, hide_index=True,
+                column_config={
+                    "Direction": st.column_config.TextColumn(width="small"),
+                    "Lot Size": st.column_config.NumberColumn(format="%.2f"),
+                },
             )
 
-    # --- Export ---
-    st.markdown("### Export Report")
-    report = {
-        "generated_at": datetime.now().isoformat(),
-        "risk_score": total_score,
-        "max_score": MAX_SCORE,
-        "risk_level": risk_label,
-        "flags_triggered": matched_count,
-        "time_threshold_sec": time_threshold,
-        "lot_tolerance_pct": lot_tolerance * 100,
-        "account_a": {
-            "trades_count": len(trades_a),
-            "exposure": round(exp_a, 2),
-            "bonus": bonus_a,
-            "ips": account_info_a["ips"],
-            "cids": account_info_a["cids"],
-        },
-        "account_b": {
-            "trades_count": len(trades_b),
-            "exposure": round(exp_b, 2),
-            "bonus": bonus_b,
-            "ips": account_info_b["ips"],
-            "cids": account_info_b["cids"],
-        },
-        "detection_results": {
-            DETECTION_PARAMS[k]["label"]: {
-                "matched": v["matched"],
-                "points": DETECTION_PARAMS[k]["points"] if v["matched"] else 0,
-                "details": v["details"],
-            }
-            for k, v in results.items()
-        },
-        "recommended_action": risk_action,
-    }
-    report_json = json.dumps(report, indent=2, default=str)
+        st.divider()
+        st.subheader("Matched Trade Pairs")
+        pairs = match_trades(trades_a, trades_b, time_threshold)
+        if pairs:
+            pair_rows = []
+            for ta, tb, dt in pairs:
+                if ta["Symbol"] == tb["Symbol"]:
+                    pair_rows.append({
+                        "Account A Trade": ta["Trade ID"],
+                        "Account B Trade": tb["Trade ID"],
+                        "Symbol": ta["Symbol"],
+                        "Dir A": ta["Direction"],
+                        "Dir B": tb["Direction"],
+                        "Lot A": ta["Lot Size"],
+                        "Lot B": tb["Lot Size"],
+                        "Time Diff (s)": round(dt, 1),
+                        "Hedged": "Yes" if ta["Direction"] != tb["Direction"] else "No",
+                    })
+            if pair_rows:
+                st.dataframe(pd.DataFrame(pair_rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("No symbol-matched trade pairs found.")
+        else:
+            st.info("No trade pairs matched between accounts.")
 
-    st.download_button(
-        label="Download JSON Report",
-        data=report_json,
-        file_name=f"abuse_detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-        mime="application/json",
-    )
+    # ── TAB: Workflow & Export ────────────────────────────────────────────
+    with tab_workflow:
+        st.subheader("Investigation Workflow")
+        w1, w2, w3, w4 = st.columns(4)
+        with w1:
+            st.markdown("##### Step 1")
+            st.markdown("**Detection**")
+            st.caption("Engine identifies suspicious linked accounts automatically.")
+        with w2:
+            st.markdown("##### Step 2")
+            st.markdown("**Scoring**")
+            st.caption("Risk score calculated based on matched parameters.")
+        with w3:
+            st.markdown("##### Step 3")
+            st.markdown("**Analyst Review**")
+            st.caption("Review trading history, device/IP logs, bonus and exposure data.")
+        with w4:
+            st.markdown("##### Step 4")
+            st.markdown("**Decision**")
+            st.caption("Clear account / Remove bonus / Restrict withdrawals / Suspend / Escalate.")
+
+        st.divider()
+        st.subheader("Risk Classification Reference")
+        ref_df = pd.DataFrame({
+            "Score Range": ["0 \u2013 20", "21 \u2013 40", "41 \u2013 60", f"61 \u2013 {MAX_SCORE}"],
+            "Risk Level": ["Low", "Medium", "High", "Critical"],
+            "Recommended Action": [a for _, _, _, _, a in RISK_LEVELS],
+        })
+        st.dataframe(ref_df, use_container_width=True, hide_index=True)
+
+        st.divider()
+        st.subheader("Export Report")
+
+        report = {
+            "generated_at": datetime.now().isoformat(),
+            "risk_score": total_score,
+            "max_score": MAX_SCORE,
+            "risk_level": risk_label,
+            "flags_triggered": matched_count,
+            "time_threshold_sec": time_threshold,
+            "lot_tolerance_pct": lot_tolerance * 100,
+            "account_a": {
+                "trades_count": len(trades_a),
+                "exposure": round(exp_a, 2),
+                "bonus": bonus_a,
+                "ips": account_info_a["ips"],
+                "cids": account_info_a["cids"],
+            },
+            "account_b": {
+                "trades_count": len(trades_b),
+                "exposure": round(exp_b, 2),
+                "bonus": bonus_b,
+                "ips": account_info_b["ips"],
+                "cids": account_info_b["cids"],
+            },
+            "detection_results": {
+                DETECTION_PARAMS[k]["label"]: {
+                    "matched": v["matched"],
+                    "points": DETECTION_PARAMS[k]["points"] if v["matched"] else 0,
+                    "details": v["details"],
+                }
+                for k, v in results.items()
+            },
+            "recommended_action": risk_action,
+        }
+        report_json = json.dumps(report, indent=2, default=str)
+
+        col_dl1, col_dl2 = st.columns([1, 3])
+        with col_dl1:
+            st.download_button(
+                label="\U0001f4e5 Download JSON",
+                data=report_json,
+                file_name=f"abuse_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+        with col_dl2:
+            csv_data = pd.DataFrame([
+                {
+                    "Parameter": DETECTION_PARAMS[k]["label"],
+                    "Matched": v["matched"],
+                    "Points": DETECTION_PARAMS[k]["points"] if v["matched"] else 0,
+                    "Details": "; ".join(v["details"]),
+                }
+                for k, v in results.items()
+            ])
+            st.download_button(
+                label="\U0001f4e5 Download CSV",
+                data=csv_data.to_csv(index=False),
+                file_name=f"abuse_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
 
 else:
-    st.info("Please provide trade data for both accounts to begin the analysis.")
+    st.divider()
+    st.info(
+        "Configure account data in the sidebar and provide trades for both accounts to begin analysis.",
+        icon="\U0001f6e1\ufe0f",
+    )
 
-# --- Footer ---
-st.markdown("---")
-st.markdown(
-    '<p style="text-align:center;color:#94a3b8;font-size:0.85rem">'
-    'Bonus Abuse Detection System &bull; Risk & Compliance Department &bull; '
-    'Always perform manual review before permanent enforcement actions.</p>',
-    unsafe_allow_html=True,
+# ---------------------------------------------------------------------------
+# Footer
+# ---------------------------------------------------------------------------
+st.divider()
+st.caption(
+    "Bonus Abuse Detection System \u2022 Risk & Compliance Department \u2022 "
+    "Always perform manual review before permanent enforcement actions."
 )
