@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import networkx as nx
 from datetime import datetime
 import json
+import itertools
 
 # ---------------------------------------------------------------------------
 # Configuration & Constants
@@ -317,6 +319,163 @@ def build_account_detail_rows(account_info_a, account_info_b, exp_a, exp_b):
     return rows
 
 
+def build_network_graph(account_info_a, account_info_b):
+    """Build a networkx graph linking accounts through shared IPs, CIDs, locations, and payments."""
+    G = nx.Graph()
+
+    acct_nodes = {"Account A": account_info_a, "Account B": account_info_b}
+    for name in acct_nodes:
+        G.add_node(name, node_type="account")
+
+    link_categories = {
+        "IP": ("ips", "#38bdf8"),
+        "Device": ("cids", "#a78bfa"),
+        "Location": ("locations", "#fb923c"),
+        "Payment": ("payments", "#34d399"),
+    }
+
+    links = []
+    for cat_label, (field, color) in link_categories.items():
+        vals_a = set(acct_nodes["Account A"].get(field, []))
+        vals_b = set(acct_nodes["Account B"].get(field, []))
+        shared = vals_a & vals_b
+        only_a = vals_a - vals_b
+        only_b = vals_b - vals_a
+
+        for v in vals_a | vals_b:
+            node_id = f"{cat_label}: {v}"
+            is_shared = v in shared
+            G.add_node(node_id, node_type=cat_label, shared=is_shared, color=color)
+            if v in vals_a:
+                G.add_edge("Account A", node_id, category=cat_label, color=color, shared=is_shared)
+            if v in vals_b:
+                G.add_edge("Account B", node_id, category=cat_label, color=color, shared=is_shared)
+
+        for v in shared:
+            links.append({
+                "Category": cat_label,
+                "Value": v,
+                "Account A": "\u2705",
+                "Account B": "\u2705",
+                "Status": "Shared",
+            })
+        for v in only_a:
+            links.append({
+                "Category": cat_label,
+                "Value": v,
+                "Account A": "\u2705",
+                "Account B": "\u274c",
+                "Status": "Only A",
+            })
+        for v in only_b:
+            links.append({
+                "Category": cat_label,
+                "Value": v,
+                "Account A": "\u274c",
+                "Account B": "\u2705",
+                "Status": "Only B",
+            })
+
+    return G, links, link_categories
+
+
+def render_network_plotly(G, link_categories):
+    """Render a networkx graph as a Plotly figure."""
+    pos = nx.spring_layout(G, seed=42, k=2.5)
+
+    edge_traces = []
+    for u, v, data in G.edges(data=True):
+        x0, y0 = pos[u]
+        x1, y1 = pos[v]
+        dash = "solid" if data.get("shared") else "dot"
+        width = 2.5 if data.get("shared") else 1
+        edge_traces.append(go.Scatter(
+            x=[x0, x1, None], y=[y0, y1, None],
+            mode="lines",
+            line=dict(width=width, color=data.get("color", "#64748b"), dash=dash),
+            hoverinfo="none",
+            showlegend=False,
+        ))
+
+    node_traces = {}
+    for node, data in G.nodes(data=True):
+        ntype = data.get("node_type", "other")
+        x, y = pos[node]
+        if ntype == "account":
+            color = "#6366f1"
+            size = 30
+            symbol = "diamond"
+        else:
+            color = data.get("color", "#64748b")
+            size = 18 if data.get("shared") else 12
+            symbol = "circle"
+
+        key = ntype
+        if key not in node_traces:
+            node_traces[key] = {"x": [], "y": [], "text": [], "color": [], "size": [], "symbol": []}
+        node_traces[key]["x"].append(x)
+        node_traces[key]["y"].append(y)
+        node_traces[key]["text"].append(node)
+        node_traces[key]["color"].append(color)
+        node_traces[key]["size"].append(size)
+        node_traces[key]["symbol"].append(symbol)
+
+    fig = go.Figure()
+    for trace in edge_traces:
+        fig.add_trace(trace)
+
+    legend_names = {"account": "Accounts"}
+    for cat_label, (_, color) in link_categories.items():
+        legend_names[cat_label] = cat_label
+
+    for ntype, vals in node_traces.items():
+        name = legend_names.get(ntype, ntype)
+        fig.add_trace(go.Scatter(
+            x=vals["x"], y=vals["y"],
+            mode="markers+text",
+            marker=dict(size=vals["size"], color=vals["color"],
+                        symbol=vals["symbol"],
+                        line=dict(width=1.5, color="#0f172a")),
+            text=vals["text"],
+            textposition="top center",
+            textfont=dict(size=9, color="#e2e8f0"),
+            name=name,
+            hoverinfo="text",
+        ))
+
+    fig.update_layout(
+        height=500,
+        margin=dict(l=10, r=10, t=30, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        legend=dict(orientation="h", y=-0.05, font=dict(color="#94a3b8")),
+        font=dict(color="#e2e8f0"),
+    )
+    return fig
+
+
+def build_category_table(account_info_a, account_info_b, field, label):
+    """Build a detailed comparison table for a single network category."""
+    vals_a = set(account_info_a.get(field, []))
+    vals_b = set(account_info_b.get(field, []))
+    shared = vals_a & vals_b
+    all_vals = sorted(vals_a | vals_b)
+    rows = []
+    for v in all_vals:
+        in_a = v in vals_a
+        in_b = v in vals_b
+        rows.append({
+            label: v,
+            "Account A": "\u2705" if in_a else "\u274c",
+            "Account B": "\u2705" if in_b else "\u274c",
+            "Shared": "\u2705" if (in_a and in_b) else "\u274c",
+            "Risk": "High" if (in_a and in_b) else "Low",
+        })
+    return rows, shared
+
+
 def parse_csv_trades(uploaded_file):
     df = pd.read_csv(uploaded_file)
     required = {"Trade ID", "Symbol", "Direction", "Lot Size", "Open Time", "Close Time"}
@@ -414,22 +573,36 @@ with st.sidebar:
     st.subheader("Account A")
     ips_a_str = st.text_input("IP Addresses", "192.168.1.10, 10.0.0.5", key="ip_a")
     cids_a_str = st.text_input("Device IDs", "DEV-001, DEV-003", key="cid_a")
+    locs_a_str = st.text_input("Locations", "Dubai, UAE; London, UK", key="loc_a")
+    pays_a_str = st.text_input("Payment Methods", "Visa *4521, Skrill user@mail.com", key="pay_a")
     bonus_a = st.number_input("Bonus Amount ($)", min_value=0.0, value=200.0, step=10.0, key="bonus_a")
 
     st.divider()
     st.subheader("Account B")
     ips_b_str = st.text_input("IP Addresses", "192.168.1.10, 10.0.0.8", key="ip_b")
     cids_b_str = st.text_input("Device IDs", "DEV-001, DEV-004", key="cid_b")
+    locs_b_str = st.text_input("Locations", "Dubai, UAE; Cairo, Egypt", key="loc_b")
+    pays_b_str = st.text_input("Payment Methods", "Visa *4521, Neteller john@mail.com", key="pay_b")
     bonus_b = st.number_input("Bonus Amount ($)", min_value=0.0, value=170.0, step=10.0, key="bonus_b")
 
+def _split(s, sep=","):
+    return [x.strip() for x in s.split(sep) if x.strip()]
+
+def _split_semi(s):
+    return [x.strip() for x in s.split(";") if x.strip()]
+
 account_info_a = {
-    "ips": [x.strip() for x in ips_a_str.split(",") if x.strip()],
-    "cids": [x.strip() for x in cids_a_str.split(",") if x.strip()],
+    "ips": _split(ips_a_str),
+    "cids": _split(cids_a_str),
+    "locations": _split_semi(locs_a_str),
+    "payments": _split(pays_a_str),
     "bonus": bonus_a,
 }
 account_info_b = {
-    "ips": [x.strip() for x in ips_b_str.split(",") if x.strip()],
-    "cids": [x.strip() for x in cids_b_str.split(",") if x.strip()],
+    "ips": _split(ips_b_str),
+    "cids": _split(cids_b_str),
+    "locations": _split_semi(locs_b_str),
+    "payments": _split(pays_b_str),
     "bonus": bonus_b,
 }
 
@@ -509,9 +682,10 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
     m4.metric("Trades Analyzed", f"{len(trades_a)} + {len(trades_b)}")
 
     # ── Main Content Tabs ────────────────────────────────────────────────
-    tab_overview, tab_details, tab_exposure, tab_trades, tab_workflow = st.tabs([
+    tab_overview, tab_details, tab_network, tab_exposure, tab_trades, tab_workflow = st.tabs([
         "\U0001f3af Overview",
         "\U0001f50d Detection Details",
+        "\U0001f310 Network Analysis",
         "\U0001f4b9 Exposure Analysis",
         "\U0001f4c4 Trade Data",
         "\U0001f4cb Workflow & Export",
@@ -713,6 +887,136 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
         )
         st.markdown(f"**Grand Total: {total_score} / {MAX_SCORE} pts**")
 
+    # ── TAB: Network Analysis ────────────────────────────────────────────
+    with tab_network:
+        st.subheader("Account Network Analysis")
+        st.caption("Visualize linkages between accounts across IP addresses, devices, locations, and payment methods.")
+
+        # Build graph
+        net_graph, all_links, link_cats = build_network_graph(account_info_a, account_info_b)
+
+        # Summary metrics
+        ip_shared = set(account_info_a.get("ips", [])) & set(account_info_b.get("ips", []))
+        cid_shared = set(account_info_a.get("cids", [])) & set(account_info_b.get("cids", []))
+        loc_shared = set(account_info_a.get("locations", [])) & set(account_info_b.get("locations", []))
+        pay_shared = set(account_info_a.get("payments", [])) & set(account_info_b.get("payments", []))
+        total_shared = len(ip_shared) + len(cid_shared) + len(loc_shared) + len(pay_shared)
+
+        nm1, nm2, nm3, nm4, nm5 = st.columns(5)
+        nm1.metric("Shared IPs", len(ip_shared))
+        nm2.metric("Shared Devices", len(cid_shared))
+        nm3.metric("Shared Locations", len(loc_shared))
+        nm4.metric("Shared Payments", len(pay_shared))
+        nm5.metric("Total Links", total_shared)
+
+        # Network graph
+        st.divider()
+        st.markdown("#### Connection Graph")
+        st.caption("Accounts shown as diamonds. Shared connections are solid lines; unique connections are dotted.")
+        fig_net = render_network_plotly(net_graph, link_cats)
+        st.plotly_chart(fig_net, use_container_width=True)
+
+        # All Links overview table
+        st.divider()
+        st.markdown("#### All Network Links")
+        if all_links:
+            links_df = pd.DataFrame(all_links)
+            links_df = links_df.sort_values(["Status", "Category"], ascending=[True, True]).reset_index(drop=True)
+            st.dataframe(links_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No network data available. Enter IP, Device, Location, or Payment data in the sidebar.")
+
+        # Per-category detailed tables
+        st.divider()
+        cat_tabs = st.tabs([
+            "\U0001f310 IP Addresses",
+            "\U0001f4f1 Devices (CID)",
+            "\U0001f4cd Locations",
+            "\U0001f4b3 Payment Methods",
+        ])
+
+        with cat_tabs[0]:
+            st.markdown("#### IP Address Analysis")
+            ip_rows, ip_sh = build_category_table(account_info_a, account_info_b, "ips", "IP Address")
+            if ip_rows:
+                st.dataframe(pd.DataFrame(ip_rows), use_container_width=True, hide_index=True)
+                if ip_sh:
+                    st.error(f"**{len(ip_sh)} shared IP(s) detected:** {', '.join(ip_sh)}", icon="\U0001f6a8")
+                else:
+                    st.success("No shared IP addresses found.", icon="\u2705")
+            else:
+                st.info("No IP address data provided.")
+
+        with cat_tabs[1]:
+            st.markdown("#### Device / CID Analysis")
+            cid_rows, cid_sh = build_category_table(account_info_a, account_info_b, "cids", "Device ID")
+            if cid_rows:
+                st.dataframe(pd.DataFrame(cid_rows), use_container_width=True, hide_index=True)
+                if cid_sh:
+                    st.error(f"**{len(cid_sh)} shared device(s) detected:** {', '.join(cid_sh)}", icon="\U0001f6a8")
+                else:
+                    st.success("No shared devices found.", icon="\u2705")
+            else:
+                st.info("No device/CID data provided.")
+
+        with cat_tabs[2]:
+            st.markdown("#### Location Analysis")
+            loc_rows, loc_sh = build_category_table(account_info_a, account_info_b, "locations", "Location")
+            if loc_rows:
+                st.dataframe(pd.DataFrame(loc_rows), use_container_width=True, hide_index=True)
+                if loc_sh:
+                    st.warning(f"**{len(loc_sh)} shared location(s):** {', '.join(loc_sh)}", icon="\u26a0\ufe0f")
+                else:
+                    st.success("No shared locations found.", icon="\u2705")
+            else:
+                st.info("No location data provided.")
+
+        with cat_tabs[3]:
+            st.markdown("#### Payment Method Analysis")
+            pay_rows, pay_sh = build_category_table(account_info_a, account_info_b, "payments", "Payment Method")
+            if pay_rows:
+                st.dataframe(pd.DataFrame(pay_rows), use_container_width=True, hide_index=True)
+                if pay_sh:
+                    st.error(f"**{len(pay_sh)} shared payment method(s) detected:** {', '.join(pay_sh)}", icon="\U0001f6a8")
+                else:
+                    st.success("No shared payment methods found.", icon="\u2705")
+            else:
+                st.info("No payment method data provided.")
+
+        # Network Risk Summary
+        st.divider()
+        st.markdown("#### Network Risk Summary")
+        net_risk_rows = [
+            {"Category": "IP Address", "Account A Count": len(account_info_a.get("ips", [])),
+             "Account B Count": len(account_info_b.get("ips", [])),
+             "Shared": len(ip_shared), "Risk": "High" if ip_shared else "Low"},
+            {"Category": "Device / CID", "Account A Count": len(account_info_a.get("cids", [])),
+             "Account B Count": len(account_info_b.get("cids", [])),
+             "Shared": len(cid_shared), "Risk": "High" if cid_shared else "Low"},
+            {"Category": "Location", "Account A Count": len(account_info_a.get("locations", [])),
+             "Account B Count": len(account_info_b.get("locations", [])),
+             "Shared": len(loc_shared), "Risk": "Medium" if loc_shared else "Low"},
+            {"Category": "Payment Method", "Account A Count": len(account_info_a.get("payments", [])),
+             "Account B Count": len(account_info_b.get("payments", [])),
+             "Shared": len(pay_shared), "Risk": "Critical" if pay_shared else "Low"},
+        ]
+        st.dataframe(pd.DataFrame(net_risk_rows), use_container_width=True, hide_index=True)
+
+        if total_shared >= 3:
+            st.error(
+                f"**{total_shared} total shared identifiers** across categories. "
+                "Strong evidence of account linkage. Recommend immediate investigation.",
+                icon="\U0001f6a8",
+            )
+        elif total_shared >= 1:
+            st.warning(
+                f"**{total_shared} shared identifier(s)** detected. "
+                "Review account relationship and monitor for further connections.",
+                icon="\u26a0\ufe0f",
+            )
+        else:
+            st.success("No shared network identifiers detected between accounts.", icon="\u2705")
+
     # ── TAB: Exposure Analysis ───────────────────────────────────────────
     with tab_exposure:
         st.subheader("Total Market Exposure")
@@ -856,6 +1160,11 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
         st.divider()
         st.subheader("Export Report")
 
+        net_ip_shared = set(account_info_a.get("ips", [])) & set(account_info_b.get("ips", []))
+        net_cid_shared = set(account_info_a.get("cids", [])) & set(account_info_b.get("cids", []))
+        net_loc_shared = set(account_info_a.get("locations", [])) & set(account_info_b.get("locations", []))
+        net_pay_shared = set(account_info_a.get("payments", [])) & set(account_info_b.get("payments", []))
+
         report = {
             "generated_at": datetime.now().isoformat(),
             "risk_score": total_score,
@@ -870,6 +1179,8 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
                 "bonus": bonus_a,
                 "ips": account_info_a["ips"],
                 "cids": account_info_a["cids"],
+                "locations": account_info_a.get("locations", []),
+                "payments": account_info_a.get("payments", []),
             },
             "account_b": {
                 "trades_count": len(trades_b),
@@ -877,6 +1188,15 @@ if trades_a is not None and trades_b is not None and not trades_a.empty and not 
                 "bonus": bonus_b,
                 "ips": account_info_b["ips"],
                 "cids": account_info_b["cids"],
+                "locations": account_info_b.get("locations", []),
+                "payments": account_info_b.get("payments", []),
+            },
+            "network_analysis": {
+                "shared_ips": list(net_ip_shared),
+                "shared_devices": list(net_cid_shared),
+                "shared_locations": list(net_loc_shared),
+                "shared_payments": list(net_pay_shared),
+                "total_shared_links": len(net_ip_shared) + len(net_cid_shared) + len(net_loc_shared) + len(net_pay_shared),
             },
             "detection_results": {
                 DETECTION_PARAMS[k]["label"]: {
