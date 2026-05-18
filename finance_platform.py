@@ -50,6 +50,68 @@ st.markdown("""
     .alert-desc { font-size: 12px; color: #94a3b8; }
     .section-divider { margin: 8px 0 16px 0; border-top: 1px solid #334155; }
     div[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
+    .arch-box {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 6px;
+    }
+    .arch-box h4 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #e2e8f0;
+    }
+    .arch-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
+        font-size: 13px;
+        color: #94a3b8;
+    }
+    .arch-item .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .arch-arrow {
+        text-align: center;
+        font-size: 22px;
+        color: #6366f1;
+        margin: 4px 0;
+        line-height: 1;
+    }
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .status-online { background: #22c55e; }
+    .status-warning { background: #f59e0b; }
+    .status-offline { background: #ef4444; }
+    .pipeline-metric {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px 16px;
+        text-align: center;
+    }
+    .pipeline-metric .value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+    .pipeline-metric .label {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -242,6 +304,7 @@ with st.sidebar:
         "Navigation",
         [
             "📊 Dashboard",
+            "🏗️ System Architecture",
             "💸 Transactions",
             "🔄 Reconciliation",
             "📒 Ledger",
@@ -390,6 +453,287 @@ if page == "📊 Dashboard":
         fig_buf.add_hline(y=15, line_dash="dash", line_color="#ef4444", annotation_text="15% Threshold")
         fig_buf.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=240, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
         st.plotly_chart(fig_buf, use_container_width=True)
+
+
+# ══════════════════════════════════════════════
+# SYSTEM ARCHITECTURE
+# ══════════════════════════════════════════════
+elif page == "🏗️ System Architecture":
+    st.title("🏗️ System Architecture")
+    st.caption("End-to-end data flow pipeline — from connected systems to end users")
+
+    # ── Pipeline health metrics ──
+    st.subheader("Pipeline Health")
+    ph1, ph2, ph3, ph4, ph5, ph6 = st.columns(6)
+    ph1.markdown('<div class="pipeline-metric"><div class="value">6</div><div class="label">Connected Systems</div></div>', unsafe_allow_html=True)
+    ph2.markdown('<div class="pipeline-metric"><div class="value">4</div><div class="label">API Connectors</div></div>', unsafe_allow_html=True)
+    ph3.markdown(f'<div class="pipeline-metric"><div class="value">{len(df_txn)}</div><div class="label">Txns Processed</div></div>', unsafe_allow_html=True)
+    matched_count = len(df_rec[df_rec["Status"] == "Matched"])
+    ph4.markdown(f'<div class="pipeline-metric"><div class="value">{matched_count}/{len(df_rec)}</div><div class="label">Reconciled</div></div>', unsafe_allow_html=True)
+    ph5.markdown(f'<div class="pipeline-metric"><div class="value">{len(df_ledger)}</div><div class="label">Ledger Entries</div></div>', unsafe_allow_html=True)
+    active_al = len(df_alerts[df_alerts["Status"].isin(["Open", "Investigating"])])
+    ph6.markdown(f'<div class="pipeline-metric"><div class="value">{active_al}</div><div class="label">Active Alerts</div></div>', unsafe_allow_html=True)
+
+    st.markdown("")
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 1. CONNECTED SYSTEMS
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("1️⃣ Connected Systems")
+    st.caption("External platforms feeding data into the pipeline")
+
+    systems = [
+        {"name": "CRM", "desc": "Client deposits, withdrawals, account data", "status": "online", "last_sync": "2 min ago", "records": "8,420"},
+        {"name": "PSP Gateways", "desc": "Stripe, Adyen, Worldpay payment processing", "status": "online", "last_sync": "30 sec ago", "records": "12,105"},
+        {"name": "Bank Accounts", "desc": "Chase, HSBC, Deutsche Bank, Barclays", "status": "online", "last_sync": "5 min ago", "records": "3,218"},
+        {"name": "Trading Platform", "desc": "Client trading activity and P&L data", "status": "online", "last_sync": "1 min ago", "records": "45,890"},
+        {"name": "Bonus Engine", "desc": "Welcome, loyalty, referral bonus credits", "status": "warning", "last_sync": "18 min ago", "records": "1,240"},
+        {"name": "Commission Engine", "desc": "IB commission calculations and payouts", "status": "online", "last_sync": "10 min ago", "records": "892"},
+    ]
+
+    sys_cols = st.columns(3)
+    for i, sys in enumerate(systems):
+        col = sys_cols[i % 3]
+        dot_class = f"status-{sys['status']}"
+        status_label = "Online" if sys["status"] == "online" else "Delayed" if sys["status"] == "warning" else "Offline"
+        with col:
+            st.markdown(f"""
+            <div class="arch-box">
+                <h4><span class="status-dot {dot_class}"></span> {sys["name"]}</h4>
+                <div class="arch-item">{sys["desc"]}</div>
+                <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:#64748b;">
+                    <span>Last sync: {sys["last_sync"]}</span>
+                    <span>{sys["records"]} records</span>
+                </div>
+                <div style="margin-top:6px">{status_badge(status_label.replace("Delayed", "Investigating").replace("Online", "Completed").replace("Offline", "Failed"))}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 2. DATA INTEGRATION LAYER
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("2️⃣ Data Integration Layer")
+    st.caption("Ingestion, validation, and routing of incoming data")
+
+    int_cols = st.columns(4)
+
+    integration_items = [
+        {"title": "API Connectors", "icon": "🔌", "details": ["REST APIs (CRM, PSP)", "WebSocket (Trading)", "SFTP (Bank files)", "OAuth 2.0 Auth"], "status": "4/4 Active", "color": "#22c55e"},
+        {"title": "File Imports", "icon": "📁", "details": ["Bank statements (MT940)", "PSP settlement CSV", "Commission reports", "Bonus batch files"], "status": "Last: 06:00", "color": "#3b82f6"},
+        {"title": "Scheduled Data Pull", "icon": "⏰", "details": ["Real-time: PSP, CRM", "Every 5 min: Trading", "Every 15 min: Banks", "Hourly: Commissions"], "status": "On schedule", "color": "#22c55e"},
+        {"title": "Data Validation", "icon": "✅", "details": ["Schema validation", "Amount range checks", "Duplicate detection", "Referential integrity"], "status": "99.8% pass rate", "color": "#22c55e"},
+    ]
+
+    for idx, item in enumerate(integration_items):
+        with int_cols[idx]:
+            items_html = "".join([f'<div class="arch-item"><div class="dot" style="background:{item["color"]}"></div>{d}</div>' for d in item["details"]])
+            st.markdown(f"""
+            <div class="arch-box">
+                <h4>{item["icon"]} {item["title"]}</h4>
+                {items_html}
+                <div style="margin-top:8px; font-size:11px; color:{item['color']}">{item["status"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 3. DATA NORMALIZATION LAYER
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("3️⃣ Data Normalization Layer")
+    st.caption("Standardizing data formats across all sources")
+
+    norm_cols = st.columns(4)
+
+    norm_items = [
+        {"title": "Currency Standardization", "icon": "💱", "details": ["USD base currency", "Real-time FX rates", "Multi-currency support", "EUR, GBP, USD, CHF"], "metric": "3 currencies"},
+        {"title": "Time Standardization", "icon": "🕐", "details": ["UTC normalization", "Timezone conversion", "Settlement date calc", "T+0 / T+1 handling"], "metric": "UTC aligned"},
+        {"title": "ID Mapping", "icon": "🔗", "details": ["Cross-system ID link", "Client ID unification", "Transaction ref mapping", "PSP → Internal ID"], "metric": "100% mapped"},
+        {"title": "Transaction Type Mapping", "icon": "🏷️", "details": ["Deposit classification", "Withdrawal mapping", "Fee categorization", "Commission tagging"], "metric": "6 types"},
+    ]
+
+    for idx, item in enumerate(norm_items):
+        with norm_cols[idx]:
+            items_html = "".join([f'<div class="arch-item"><div class="dot" style="background:#6366f1"></div>{d}</div>' for d in item["details"]])
+            st.markdown(f"""
+            <div class="arch-box">
+                <h4>{item["icon"]} {item["title"]}</h4>
+                {items_html}
+                <div style="margin-top:8px; font-size:11px; color:#6366f1">{item["metric"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 4. RECONCILIATION ENGINE
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("4️⃣ Reconciliation Engine")
+    st.caption("Automated matching and exception detection")
+
+    re_matched = len(df_rec[df_rec["Status"] == "Matched"])
+    re_partial = len(df_rec[df_rec["Status"] == "Partial"])
+    re_exception = len(df_rec[df_rec["Status"] == "Exception"])
+    re_rate = (re_matched / len(df_rec) * 100) if len(df_rec) > 0 else 0
+
+    re1, re2, re3, re4 = st.columns(4)
+    re1.metric("ID Match", f"{re_matched} matched", f"{re_rate:.0f}% rate")
+    re2.metric("Amount Match", f"{re_partial} partial", "FX variance check")
+    re3.metric("Time Window Match", "±2 hours", "Settlement tolerance")
+    re4.metric("Exception Detection", f"{re_exception} found", delta_color="inverse")
+
+    recon_col1, recon_col2 = st.columns(2)
+    with recon_col1:
+        rec_summary = pd.DataFrame({"Status": ["Matched", "Partial", "Exception"], "Count": [re_matched, re_partial, re_exception]})
+        fig_rec = px.pie(rec_summary, values="Count", names="Status", hole=0.55, color_discrete_map={"Matched": "#22c55e", "Partial": "#f59e0b", "Exception": "#ef4444"})
+        fig_rec.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=0, r=0, t=10, b=0))
+        fig_rec.update_traces(textinfo="value+percent")
+        st.plotly_chart(fig_rec, use_container_width=True)
+    with recon_col2:
+        st.dataframe(
+            df_rec[["Case ID", "Transaction", "Status", "Match Score", "Case Status"]],
+            use_container_width=True,
+            hide_index=True,
+            column_config={"Match Score": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%d%%")},
+        )
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 5. CENTRAL FINANCIAL LEDGER
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("5️⃣ Central Financial Ledger")
+    st.caption("Double-entry bookkeeping across all account categories")
+
+    ledger_categories = [
+        {"name": "Client Funds", "icon": "👤", "debits": df_ledger[(df_ledger["Category"] == "Client Liability") & (df_ledger["Type"] == "Debit")]["Amount"].sum(), "credits": df_ledger[(df_ledger["Category"] == "Client Liability") & (df_ledger["Type"] == "Credit")]["Amount"].sum()},
+        {"name": "Company Cash", "icon": "🏢", "debits": df_ledger[(df_ledger["Category"] == "Company Cash") & (df_ledger["Type"] == "Debit")]["Amount"].sum(), "credits": df_ledger[(df_ledger["Category"] == "Company Cash") & (df_ledger["Type"] == "Credit")]["Amount"].sum()},
+        {"name": "Fees", "icon": "💳", "debits": df_ledger[(df_ledger["Category"] == "Fee Accounts") & (df_ledger["Type"] == "Debit")]["Amount"].sum(), "credits": df_ledger[(df_ledger["Category"] == "Fee Accounts") & (df_ledger["Type"] == "Credit")]["Amount"].sum()},
+        {"name": "Commissions", "icon": "🤝", "debits": df_ledger[(df_ledger["Category"] == "Commission Accounts") & (df_ledger["Type"] == "Debit")]["Amount"].sum(), "credits": df_ledger[(df_ledger["Category"] == "Commission Accounts") & (df_ledger["Type"] == "Credit")]["Amount"].sum()},
+        {"name": "Adjustments", "icon": "🔧", "debits": 0, "credits": 0},
+    ]
+
+    led_cols = st.columns(5)
+    for idx, cat in enumerate(ledger_categories):
+        net = cat["debits"] - cat["credits"]
+        with led_cols[idx]:
+            st.markdown(f"""
+            <div class="arch-box" style="text-align:center">
+                <h4>{cat["icon"]} {cat["name"]}</h4>
+                <div style="font-size:11px; color:#64748b; margin-bottom:4px">DR: {fmt(cat["debits"])}</div>
+                <div style="font-size:11px; color:#64748b; margin-bottom:4px">CR: {fmt(cat["credits"])}</div>
+                <div style="font-size:16px; font-weight:700; color:{'#22c55e' if net >= 0 else '#ef4444'}">{fmt(abs(net))}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 6. LIQUIDITY ENGINE + ALERT ENGINE (side by side)
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    eng_left, eng_right = st.columns(2)
+
+    with eng_left:
+        st.subheader("6a️⃣ Liquidity Engine")
+        total_bank = df_bank["Balance"].sum()
+        total_psp = df_psp["Balance"].sum()
+        avail = total_bank + total_psp
+        pend_wd = df_txn[(df_txn["Type"] == "Withdrawal") & (df_txn["Status"] == "Pending")]["Amount"].sum() + df_psp["Pending Out"].sum()
+        psp_hold = df_psp["Pending Out"].sum()
+        net_liq = avail - pend_wd - 125000 - 48500
+
+        liq_items = [
+            {"label": "Available Cash", "value": fmt(avail), "color": "#22c55e"},
+            {"label": "Pending Withdrawals", "value": fmt(pend_wd), "color": "#ef4444"},
+            {"label": "PSP Holdbacks", "value": fmt(psp_hold), "color": "#f59e0b"},
+            {"label": "Net Liquidity", "value": fmt(net_liq), "color": "#6366f1"},
+        ]
+
+        for item in liq_items:
+            st.markdown(f"""
+            <div class="arch-item" style="justify-content:space-between; padding:8px 12px; background:#0f172a; border-radius:6px; margin-bottom:4px;">
+                <span>{item["label"]}</span>
+                <span style="font-weight:700; color:{item["color"]}">{item["value"]}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with eng_right:
+        st.subheader("6b️⃣ Alert & Exception Engine")
+        alert_types = [
+            {"label": "Reconciliation Errors", "count": len(df_rec[df_rec["Status"] == "Exception"]), "color": "#ef4444"},
+            {"label": "PSP Delays", "count": len(df_alerts[df_alerts["Title"].str.contains("PSP|Delay", case=False)]), "color": "#f59e0b"},
+            {"label": "Cash Imbalance", "count": len(df_alerts[df_alerts["Title"].str.contains("Cash|Imbalance", case=False)]), "color": "#ef4444"},
+            {"label": "Threshold Breach", "count": len(df_alerts[df_alerts["Title"].str.contains("Liquidity|Buffer|Spike", case=False)]), "color": "#f59e0b"},
+        ]
+
+        for item in alert_types:
+            st.markdown(f"""
+            <div class="arch-item" style="justify-content:space-between; padding:8px 12px; background:#0f172a; border-radius:6px; margin-bottom:4px;">
+                <span>{item["label"]}</span>
+                <span style="font-weight:700; color:{item["color"]}">{item["count"]} active</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 7. REPORTING & ANALYTICS
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("7️⃣ Reporting & Analytics")
+    st.caption("Output layer — dashboards, reports, and monitoring")
+
+    report_items = [
+        {"name": "Dashboard", "icon": "📊", "freq": "Real-time", "status": "Live"},
+        {"name": "Daily Report", "icon": "📅", "freq": "Daily @ 01:00", "status": "Scheduled"},
+        {"name": "Weekly Review", "icon": "📋", "freq": "Monday @ 06:00", "status": "Scheduled"},
+        {"name": "Monthly Close", "icon": "📊", "freq": "1st of month", "status": "Scheduled"},
+        {"name": "Profitability Analysis", "icon": "💰", "freq": "On demand", "status": "Available"},
+        {"name": "KPI Monitoring", "icon": "📈", "freq": "Real-time", "status": "Live"},
+    ]
+
+    rpt_cols = st.columns(6)
+    for idx, rpt in enumerate(report_items):
+        with rpt_cols[idx]:
+            live_color = "#22c55e" if rpt["status"] == "Live" else "#3b82f6" if rpt["status"] == "Scheduled" else "#6366f1"
+            st.markdown(f"""
+            <div class="arch-box" style="text-align:center; min-height:120px">
+                <div style="font-size:24px; margin-bottom:4px">{rpt["icon"]}</div>
+                <h4 style="font-size:12px">{rpt["name"]}</h4>
+                <div style="font-size:10px; color:#64748b">{rpt["freq"]}</div>
+                <div style="margin-top:6px; font-size:11px; color:{live_color}; font-weight:600">{rpt["status"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('<div class="arch-arrow">▼</div>', unsafe_allow_html=True)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 8. END USERS
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("8️⃣ End Users")
+    st.caption("Teams and roles consuming platform outputs")
+
+    users = [
+        {"role": "CFO", "icon": "👔", "access": "Full dashboard, reports, KPIs", "level": "Executive"},
+        {"role": "Finance Manager", "icon": "📊", "access": "Ledger, liquidity, reconciliation", "level": "Management"},
+        {"role": "Operations Team", "icon": "⚙️", "access": "Transactions, PSP monitoring", "level": "Operational"},
+        {"role": "Reconciliation Team", "icon": "🔄", "access": "Matching, exceptions, cases", "level": "Operational"},
+        {"role": "Management", "icon": "🏢", "access": "Reports, analytics, profitability", "level": "Executive"},
+    ]
+
+    user_cols = st.columns(5)
+    for idx, user in enumerate(users):
+        with user_cols[idx]:
+            level_color = "#6366f1" if user["level"] == "Executive" else "#22c55e"
+            st.markdown(f"""
+            <div class="arch-box" style="text-align:center">
+                <div style="font-size:28px; margin-bottom:4px">{user["icon"]}</div>
+                <h4 style="font-size:13px">{user["role"]}</h4>
+                <div style="font-size:11px; color:#94a3b8; margin-bottom:6px">{user["access"]}</div>
+                <span class="badge" style="background:{'rgba(99,102,241,0.15)' if user['level']=='Executive' else 'rgba(34,197,94,0.15)'}; color:{level_color}">{user["level"]}</span>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════
