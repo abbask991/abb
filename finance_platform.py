@@ -58,21 +58,26 @@ st.markdown("""
 # ──────────────────────────────────────────────
 
 transactions_data = [
-    {"ID": "TXN-001", "Type": "Deposit", "Amount": 25000, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Alpha", "Client": "Acme Corp", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-18 08:23", "Description": "Client deposit via wire"},
-    {"ID": "TXN-002", "Type": "Withdrawal", "Amount": 12500, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Beta", "Client": "Globe Ltd", "PSP": "Adyen", "Bank": "HSBC", "Timestamp": "2026-05-18 09:15", "Description": "Client withdrawal request"},
-    {"ID": "TXN-003", "Type": "Deposit", "Amount": 8700, "Currency": "EUR", "Status": "Pending", "Source System": "PSP-Alpha", "Client": "NovaTech", "PSP": "Stripe", "Bank": "Deutsche", "Timestamp": "2026-05-18 09:42", "Description": "Pending deposit confirmation"},
-    {"ID": "TXN-004", "Type": "Transfer", "Amount": 50000, "Currency": "USD", "Status": "Completed", "Source System": "Internal", "Client": "Internal", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 10:01", "Description": "Treasury transfer"},
-    {"ID": "TXN-005", "Type": "Fee", "Amount": 125, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Alpha", "Client": "Acme Corp", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-18 08:23", "Description": "Processing fee"},
-    {"ID": "TXN-006", "Type": "Commission", "Amount": 375, "Currency": "USD", "Status": "Completed", "Source System": "IB-System", "Client": "IB-Partner-01", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 10:30", "Description": "IB commission payout"},
-    {"ID": "TXN-007", "Type": "Deposit", "Amount": 150000, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Gamma", "Client": "MegaFund", "PSP": "Worldpay", "Bank": "Barclays", "Timestamp": "2026-05-17 14:22", "Description": "Large client deposit"},
-    {"ID": "TXN-008", "Type": "Withdrawal", "Amount": 45000, "Currency": "GBP", "Status": "Failed", "Source System": "PSP-Beta", "Client": "BritCo", "PSP": "Adyen", "Bank": "Barclays", "Timestamp": "2026-05-17 16:45", "Description": "Failed withdrawal - insufficient PSP balance"},
-    {"ID": "TXN-009", "Type": "Deposit", "Amount": 32000, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Alpha", "Client": "SolarInc", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-17 11:10", "Description": "Client deposit"},
-    {"ID": "TXN-010", "Type": "Withdrawal", "Amount": 18200, "Currency": "EUR", "Status": "Pending", "Source System": "PSP-Beta", "Client": "EuroTrade", "PSP": "Adyen", "Bank": "Deutsche", "Timestamp": "2026-05-18 07:50", "Description": "Pending withdrawal"},
-    {"ID": "TXN-011", "Type": "Fee", "Amount": 89, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Gamma", "Client": "MegaFund", "PSP": "Worldpay", "Bank": "Barclays", "Timestamp": "2026-05-17 14:22", "Description": "Processing fee"},
-    {"ID": "TXN-012", "Type": "Deposit", "Amount": 5600, "Currency": "USD", "Status": "Reversed", "Source System": "PSP-Alpha", "Client": "QuickPay", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-16 09:30", "Description": "Reversed deposit - chargeback"},
-    {"ID": "TXN-013", "Type": "Transfer", "Amount": 200000, "Currency": "USD", "Status": "Completed", "Source System": "Internal", "Client": "Internal", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-16 15:00", "Description": "Liquidity rebalancing"},
-    {"ID": "TXN-014", "Type": "Commission", "Amount": 1250, "Currency": "USD", "Status": "Completed", "Source System": "IB-System", "Client": "IB-Partner-02", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-16 16:00", "Description": "Monthly IB commission"},
-    {"ID": "TXN-015", "Type": "Deposit", "Amount": 72000, "Currency": "USD", "Status": "Completed", "Source System": "PSP-Alpha", "Client": "TradeCo", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-15 10:20", "Description": "Client deposit"},
+    {"ID": "TXN-001", "Type": "Deposit", "Amount": 25000, "Currency": "USD", "Status": "Completed", "Source": "CRM", "Source System": "PSP-Alpha", "Client": "Acme Corp", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-18 08:23", "Description": "Client deposit via wire"},
+    {"ID": "TXN-002", "Type": "Withdrawal", "Amount": 12500, "Currency": "USD", "Status": "Completed", "Source": "CRM", "Source System": "PSP-Beta", "Client": "Globe Ltd", "PSP": "Adyen", "Bank": "HSBC", "Timestamp": "2026-05-18 09:15", "Description": "Client withdrawal request"},
+    {"ID": "TXN-003", "Type": "Deposit", "Amount": 8700, "Currency": "EUR", "Status": "Pending", "Source": "PSP Payment", "Source System": "PSP-Alpha", "Client": "NovaTech", "PSP": "Stripe", "Bank": "Deutsche", "Timestamp": "2026-05-18 09:42", "Description": "PSP payment pending confirmation"},
+    {"ID": "TXN-004", "Type": "Transfer", "Amount": 50000, "Currency": "USD", "Status": "Completed", "Source": "Bank Transfer", "Source System": "Internal", "Client": "Internal", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 10:01", "Description": "Treasury bank transfer"},
+    {"ID": "TXN-005", "Type": "Fee", "Amount": 125, "Currency": "USD", "Status": "Completed", "Source": "PSP Payment", "Source System": "PSP-Alpha", "Client": "Acme Corp", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-18 08:23", "Description": "Processing fee"},
+    {"ID": "TXN-006", "Type": "Commission", "Amount": 375, "Currency": "USD", "Status": "Completed", "Source": "Commission", "Source System": "IB-System", "Client": "IB-Partner-01", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 10:30", "Description": "IB commission payout"},
+    {"ID": "TXN-007", "Type": "Deposit", "Amount": 150000, "Currency": "USD", "Status": "Completed", "Source": "CRM", "Source System": "PSP-Gamma", "Client": "MegaFund", "PSP": "Worldpay", "Bank": "Barclays", "Timestamp": "2026-05-17 14:22", "Description": "Large client CRM deposit"},
+    {"ID": "TXN-008", "Type": "Withdrawal", "Amount": 45000, "Currency": "GBP", "Status": "Failed", "Source": "CRM", "Source System": "PSP-Beta", "Client": "BritCo", "PSP": "Adyen", "Bank": "Barclays", "Timestamp": "2026-05-17 16:45", "Description": "Failed withdrawal - insufficient PSP balance"},
+    {"ID": "TXN-009", "Type": "Deposit", "Amount": 32000, "Currency": "USD", "Status": "Completed", "Source": "PSP Payment", "Source System": "PSP-Alpha", "Client": "SolarInc", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-17 11:10", "Description": "PSP payment deposit"},
+    {"ID": "TXN-010", "Type": "Withdrawal", "Amount": 18200, "Currency": "EUR", "Status": "Pending", "Source": "CRM", "Source System": "PSP-Beta", "Client": "EuroTrade", "PSP": "Adyen", "Bank": "Deutsche", "Timestamp": "2026-05-18 07:50", "Description": "Pending CRM withdrawal"},
+    {"ID": "TXN-011", "Type": "Fee", "Amount": 89, "Currency": "USD", "Status": "Completed", "Source": "PSP Payment", "Source System": "PSP-Gamma", "Client": "MegaFund", "PSP": "Worldpay", "Bank": "Barclays", "Timestamp": "2026-05-17 14:22", "Description": "Processing fee"},
+    {"ID": "TXN-012", "Type": "Deposit", "Amount": 5600, "Currency": "USD", "Status": "Reversed", "Source": "CRM", "Source System": "PSP-Alpha", "Client": "QuickPay", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-16 09:30", "Description": "Reversed CRM deposit - chargeback"},
+    {"ID": "TXN-013", "Type": "Transfer", "Amount": 200000, "Currency": "USD", "Status": "Completed", "Source": "Bank Transfer", "Source System": "Internal", "Client": "Internal", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-16 15:00", "Description": "Liquidity rebalancing bank transfer"},
+    {"ID": "TXN-014", "Type": "Commission", "Amount": 1250, "Currency": "USD", "Status": "Completed", "Source": "Commission", "Source System": "IB-System", "Client": "IB-Partner-02", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-16 16:00", "Description": "Monthly IB commission"},
+    {"ID": "TXN-015", "Type": "Deposit", "Amount": 72000, "Currency": "USD", "Status": "Completed", "Source": "CRM", "Source System": "PSP-Alpha", "Client": "TradeCo", "PSP": "Stripe", "Bank": "Chase", "Timestamp": "2026-05-15 10:20", "Description": "Client CRM deposit"},
+    {"ID": "TXN-016", "Type": "Deposit", "Amount": 15000, "Currency": "USD", "Status": "Completed", "Source": "Bonus", "Source System": "CRM", "Client": "Acme Corp", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 11:00", "Description": "Welcome bonus credit"},
+    {"ID": "TXN-017", "Type": "Deposit", "Amount": 5000, "Currency": "USD", "Status": "Completed", "Source": "Bonus", "Source System": "CRM", "Client": "MegaFund", "PSP": "N/A", "Bank": "Barclays", "Timestamp": "2026-05-17 09:00", "Description": "Loyalty bonus credit"},
+    {"ID": "TXN-018", "Type": "Deposit", "Amount": 42000, "Currency": "EUR", "Status": "Completed", "Source": "PSP Payment", "Source System": "PSP-Beta", "Client": "EuroTrade", "PSP": "Adyen", "Bank": "Deutsche", "Timestamp": "2026-05-18 06:30", "Description": "PSP payment settlement"},
+    {"ID": "TXN-019", "Type": "Transfer", "Amount": 85000, "Currency": "USD", "Status": "Completed", "Source": "Bank Transfer", "Source System": "Internal", "Client": "Internal", "PSP": "N/A", "Bank": "HSBC", "Timestamp": "2026-05-18 08:00", "Description": "Inter-bank transfer"},
+    {"ID": "TXN-020", "Type": "Commission", "Amount": 2100, "Currency": "USD", "Status": "Pending", "Source": "Commission", "Source System": "IB-System", "Client": "IB-Partner-03", "PSP": "N/A", "Bank": "Chase", "Timestamp": "2026-05-18 11:15", "Description": "Weekly IB commission accrual"},
 ]
 
 reconciliation_data = [
@@ -259,58 +264,76 @@ if page == "📊 Dashboard":
     st.title("📊 Dashboard")
     st.caption("Finance Automation Platform / Overview")
 
-    total_deposits = df_txn[(df_txn["Type"] == "Deposit") & (df_txn["Status"] == "Completed")]["Amount"].sum()
-    total_withdrawals = df_txn[(df_txn["Type"] == "Withdrawal") & (df_txn["Status"] == "Completed")]["Amount"].sum()
-    net_flow = total_deposits - total_withdrawals
-    total_cash = df_bank["Balance"].sum()
-    active_alerts = len(df_alerts[df_alerts["Status"].isin(["Open", "Investigating"])])
-    critical_count = len(df_alerts[(df_alerts["Severity"] == "Critical") & (df_alerts["Status"] != "Resolved")])
-    buffer_pct = df_liq.iloc[-1]["Buffer %"]
+    # ── Computed values ──
+    opening_balance = 4250000
+    cash_in_today = df_txn[(df_txn["Type"].isin(["Deposit"])) & (df_txn["Timestamp"].str.startswith("2026-05-18")) & (df_txn["Status"].isin(["Completed", "Pending"]))]["Amount"].sum()
+    cash_out_today = df_txn[(df_txn["Type"].isin(["Withdrawal", "Commission", "Fee"])) & (df_txn["Timestamp"].str.startswith("2026-05-18")) & (df_txn["Status"].isin(["Completed", "Pending"]))]["Amount"].sum()
+    net_flow = cash_in_today - cash_out_today
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Cash Position", fmt(total_cash), "+3.2%")
-    c2.metric("Net Flow Today", fmt(net_flow), "+12.5%")
-    c3.metric("Liquidity Buffer", f"{buffer_pct}%", "-2.6%", delta_color="inverse")
-    c4.metric("Active Alerts", active_alerts, f"{critical_count} critical", delta_color="inverse")
+    total_bank = df_bank["Balance"].sum()
+    total_psp = df_psp["Balance"].sum()
+    available_cash = total_bank + total_psp
+    pending_withdrawals = df_txn[(df_txn["Type"] == "Withdrawal") & (df_txn["Status"] == "Pending")]["Amount"].sum() + df_psp["Pending Out"].sum()
+    psp_total_balance = df_psp["Balance"].sum()
+
+    unresolved_exceptions = len(df_rec[df_rec["Status"] == "Exception"])
+    settlement_delays = len(df_alerts[(df_alerts["Title"].str.contains("Delay|Settlement", case=False)) & (df_alerts["Status"] != "Resolved")])
+    liquidity_warnings = len(df_alerts[(df_alerts["Title"].str.contains("Liquidity|Buffer", case=False)) & (df_alerts["Status"] != "Resolved")])
+
+    daily_volume = len(df_txn[df_txn["Timestamp"].str.startswith("2026-05-18")])
+    total_rec = len(df_rec)
+    matched_rec = len(df_rec[df_rec["Status"] == "Matched"])
+    recon_rate = (matched_rec / total_rec * 100) if total_rec > 0 else 0
+    unmatched_txns = len(df_rec[df_rec["Status"].isin(["Partial", "Exception"])])
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # FINANCIAL OVERVIEW
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("💵 Financial Overview")
+    fo1, fo2, fo3, fo4 = st.columns(4)
+    fo1.metric("Opening Balance", fmt(opening_balance))
+    fo2.metric("Cash In Today", fmt(cash_in_today), f"+{cash_in_today/opening_balance*100:.1f}%")
+    fo3.metric("Cash Out Today", fmt(cash_out_today), f"-{cash_out_today/opening_balance*100:.1f}%", delta_color="inverse")
+    fo4.metric("Net Flow", fmt(net_flow), f"{'+'if net_flow>=0 else ''}{net_flow/opening_balance*100:.1f}%")
 
     st.markdown("")
 
-    col_left, col_right = st.columns([2, 1])
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # LIQUIDITY
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("💧 Liquidity")
+    lq1, lq2, lq3 = st.columns(3)
+    lq1.metric("Available Cash", fmt(available_cash))
+    lq2.metric("Pending Withdrawals", fmt(pending_withdrawals), delta_color="inverse")
+    lq3.metric("PSP Balances", fmt(psp_total_balance))
 
-    with col_left:
-        st.subheader("Cash Flow (7-Day)")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_cash["Date"], y=df_cash["Deposits"], mode="lines", name="Deposits", fill="tozeroy", line=dict(color="#22c55e", width=2), fillcolor="rgba(34,197,94,0.15)"))
-        fig.add_trace(go.Scatter(x=df_cash["Date"], y=df_cash["Withdrawals"], mode="lines", name="Withdrawals", fill="tozeroy", line=dict(color="#ef4444", width=2), fillcolor="rgba(239,68,68,0.15)"))
-        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", y=1.1))
-        st.plotly_chart(fig, use_container_width=True)
+    col_liq_chart, col_psp_chart = st.columns(2)
 
-    with col_right:
-        st.subheader("Transaction Mix")
-        type_counts = df_txn["Type"].value_counts().reset_index()
-        type_counts.columns = ["Type", "Count"]
-        fig_pie = px.pie(type_counts, values="Count", names="Type", hole=0.55, color_discrete_sequence=["#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#a855f7"])
-        fig_pie.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=0, r=0, t=10, b=0), showlegend=True, legend=dict(font=dict(size=11)))
-        fig_pie.update_traces(textinfo="none")
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    col_a, col_b = st.columns(2)
-
-    with col_a:
-        st.subheader("Liquidity Trend")
+    with col_liq_chart:
         fig_liq = go.Figure()
-        fig_liq.add_trace(go.Scatter(x=df_liq["Date"], y=df_liq["Available"], mode="lines", name="Available Cash", fill="tozeroy", line=dict(color="#6366f1", width=2), fillcolor="rgba(99,102,241,0.15)"))
-        fig_liq.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=260, margin=dict(l=0, r=0, t=10, b=0))
+        fig_liq.add_trace(go.Scatter(x=df_liq["Date"], y=df_liq["Available"], mode="lines+markers", name="Available Cash", fill="tozeroy", line=dict(color="#6366f1", width=2), fillcolor="rgba(99,102,241,0.12)"))
+        fig_liq.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=240, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
         st.plotly_chart(fig_liq, use_container_width=True)
 
-    with col_b:
-        st.subheader("Net Flow (7-Day)")
-        fig_net = px.bar(df_cash, x="Date", y="Net Flow", color_discrete_sequence=["#6366f1"])
-        fig_net.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=260, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
-        st.plotly_chart(fig_net, use_container_width=True)
+    with col_psp_chart:
+        psp_summary = df_psp.groupby("PSP")["Balance"].sum().reset_index()
+        fig_psp = px.bar(psp_summary, x="PSP", y="Balance", color="PSP", color_discrete_sequence=["#6366f1", "#22c55e", "#f59e0b"])
+        fig_psp.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=240, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+        st.plotly_chart(fig_psp, use_container_width=True)
 
-    st.subheader(f"Active Alerts ({active_alerts})")
-    for _, alert in df_alerts[df_alerts["Status"].isin(["Open", "Investigating"])].iterrows():
+    st.markdown("")
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ALERTS
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("🚨 Alerts")
+    al1, al2, al3 = st.columns(3)
+    al1.metric("Unresolved Exceptions", unresolved_exceptions, delta_color="inverse")
+    al2.metric("Settlement Delays", settlement_delays, delta_color="inverse")
+    al3.metric("Liquidity Warnings", liquidity_warnings, delta_color="inverse")
+
+    active_alerts_df = df_alerts[df_alerts["Status"].isin(["Open", "Investigating"])]
+    for _, alert in active_alerts_df.iterrows():
         icon = severity_color(alert["Severity"])
         st.markdown(f"""
         <div class="alert-card">
@@ -322,64 +345,169 @@ if page == "📊 Dashboard":
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown("")
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # KPIs
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    st.subheader("📈 KPIs")
+    kp1, kp2, kp3 = st.columns(3)
+    kp1.metric("Daily Volume", f"{daily_volume} txns", f"Today's transactions")
+    kp2.metric("Reconciliation Rate", f"{recon_rate:.1f}%", f"{matched_rec}/{total_rec} matched")
+    kp3.metric("Unmatched Transactions", unmatched_txns, delta_color="inverse")
+
+    col_flow, col_mix = st.columns([2, 1])
+
+    with col_flow:
+        st.markdown("**Cash Flow (7-Day)**")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_cash["Date"], y=df_cash["Deposits"], mode="lines", name="Deposits", fill="tozeroy", line=dict(color="#22c55e", width=2), fillcolor="rgba(34,197,94,0.15)"))
+        fig.add_trace(go.Scatter(x=df_cash["Date"], y=df_cash["Withdrawals"], mode="lines", name="Withdrawals", fill="tozeroy", line=dict(color="#ef4444", width=2), fillcolor="rgba(239,68,68,0.15)"))
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", y=1.1))
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_mix:
+        st.markdown("**Transaction Mix**")
+        type_counts = df_txn["Type"].value_counts().reset_index()
+        type_counts.columns = ["Type", "Count"]
+        fig_pie = px.pie(type_counts, values="Count", names="Type", hole=0.55, color_discrete_sequence=["#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#a855f7"])
+        fig_pie.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(l=0, r=0, t=10, b=0), showlegend=True, legend=dict(font=dict(size=11)))
+        fig_pie.update_traces(textinfo="none")
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    col_net, col_buf = st.columns(2)
+
+    with col_net:
+        st.markdown("**Net Flow (7-Day)**")
+        fig_net = px.bar(df_cash, x="Date", y="Net Flow", color_discrete_sequence=["#6366f1"])
+        fig_net.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=240, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+        st.plotly_chart(fig_net, use_container_width=True)
+
+    with col_buf:
+        st.markdown("**Liquidity Buffer Trend**")
+        fig_buf = go.Figure()
+        fig_buf.add_trace(go.Scatter(x=df_liq["Date"], y=df_liq["Buffer %"], mode="lines+markers", line=dict(color="#f59e0b", width=2.5), fill="tozeroy", fillcolor="rgba(245,158,11,0.12)"))
+        fig_buf.add_hline(y=15, line_dash="dash", line_color="#ef4444", annotation_text="15% Threshold")
+        fig_buf.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=240, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+        st.plotly_chart(fig_buf, use_container_width=True)
+
 
 # ══════════════════════════════════════════════
 # 2. TRANSACTIONS
 # ══════════════════════════════════════════════
 elif page == "💸 Transactions":
     st.title("💸 Transactions")
-    st.caption("All Transactions — Deposits, Withdrawals, Transfers, Fees & Commissions")
+    st.caption("All Transactions — CRM Deposits, Withdrawals, PSP Payments, Bank Transfers, Commissions & Bonuses")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        search = st.text_input("🔍 Search", placeholder="ID, client, description...")
-    with col2:
-        type_filter = st.selectbox("Type", ["All"] + sorted(df_txn["Type"].unique().tolist()))
-    with col3:
-        status_filter = st.selectbox("Status", ["All"] + sorted(df_txn["Status"].unique().tolist()))
-    with col4:
-        psp_filter = st.selectbox("PSP", ["All"] + sorted(df_txn["PSP"].unique().tolist()))
-    with col5:
-        bank_filter = st.selectbox("Bank", ["All"] + sorted(df_txn["Bank"].unique().tolist()))
+    # Source summary KPIs
+    src_crm = len(df_txn[df_txn["Source"] == "CRM"])
+    src_psp = len(df_txn[df_txn["Source"] == "PSP Payment"])
+    src_bank = len(df_txn[df_txn["Source"] == "Bank Transfer"])
+    src_comm = len(df_txn[df_txn["Source"] == "Commission"])
+    src_bonus = len(df_txn[df_txn["Source"] == "Bonus"])
 
-    filtered = df_txn.copy()
-    if search:
-        mask = filtered.apply(lambda r: search.lower() in r["ID"].lower() or search.lower() in r["Client"].lower() or search.lower() in r["Description"].lower(), axis=1)
-        filtered = filtered[mask]
-    if type_filter != "All":
-        filtered = filtered[filtered["Type"] == type_filter]
-    if status_filter != "All":
-        filtered = filtered[filtered["Status"] == status_filter]
-    if psp_filter != "All":
-        filtered = filtered[filtered["PSP"] == psp_filter]
-    if bank_filter != "All":
-        filtered = filtered[filtered["Bank"] == bank_filter]
+    sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+    sc1.metric("CRM", src_crm, "deposits & withdrawals")
+    sc2.metric("PSP Payments", src_psp, "payment settlements")
+    sc3.metric("Bank Transfers", src_bank, "inter-bank")
+    sc4.metric("Commissions", src_comm, "IB payouts")
+    sc5.metric("Bonuses", src_bonus, "bonus credits")
 
-    st.caption(f"Showing {len(filtered)} of {len(df_txn)} transactions")
-    st.dataframe(
-        filtered[["ID", "Type", "Client", "Amount", "Currency", "PSP", "Bank", "Status", "Timestamp"]],
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Amount": st.column_config.NumberColumn(format="$%d"),
-        },
+    # Source tabs
+    src_tab_all, src_tab_crm, src_tab_psp, src_tab_bank, src_tab_comm, src_tab_bonus = st.tabs(
+        ["All Sources", "CRM", "PSP Payments", "Bank Transfers", "Commissions", "Bonuses"]
     )
+
+    def get_source_df(source_name):
+        if source_name == "All":
+            return df_txn
+        return df_txn[df_txn["Source"] == source_name]
+
+    def render_txn_tab(base_df, tab_key):
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            search = st.text_input("🔍 Search", placeholder="ID, client...", key=f"search_{tab_key}")
+        with col2:
+            type_filter = st.selectbox("Type", ["All"] + sorted(base_df["Type"].unique().tolist()), key=f"type_{tab_key}")
+        with col3:
+            status_filter = st.selectbox("Status", ["All"] + sorted(base_df["Status"].unique().tolist()), key=f"status_{tab_key}")
+        with col4:
+            psp_filter = st.selectbox("PSP", ["All"] + sorted(base_df["PSP"].unique().tolist()), key=f"psp_{tab_key}")
+        with col5:
+            bank_filter = st.selectbox("Bank", ["All"] + sorted(base_df["Bank"].unique().tolist()), key=f"bank_{tab_key}")
+
+        filtered = base_df.copy()
+        if search:
+            mask = filtered.apply(lambda r: search.lower() in r["ID"].lower() or search.lower() in r["Client"].lower() or search.lower() in r["Description"].lower(), axis=1)
+            filtered = filtered[mask]
+        if type_filter != "All":
+            filtered = filtered[filtered["Type"] == type_filter]
+        if status_filter != "All":
+            filtered = filtered[filtered["Status"] == status_filter]
+        if psp_filter != "All":
+            filtered = filtered[filtered["PSP"] == psp_filter]
+        if bank_filter != "All":
+            filtered = filtered[filtered["Bank"] == bank_filter]
+
+        st.caption(f"Showing {len(filtered)} of {len(base_df)} transactions")
+        st.dataframe(
+            filtered[["ID", "Type", "Source", "Client", "Amount", "Currency", "PSP", "Bank", "Status", "Timestamp"]],
+            use_container_width=True,
+            hide_index=True,
+            column_config={"Amount": st.column_config.NumberColumn(format="$%d")},
+        )
+        return filtered
+
+    with src_tab_all:
+        filtered_all = render_txn_tab(df_txn, "all")
+    with src_tab_crm:
+        render_txn_tab(get_source_df("CRM"), "crm")
+    with src_tab_psp:
+        render_txn_tab(get_source_df("PSP Payment"), "psp")
+    with src_tab_bank:
+        render_txn_tab(get_source_df("Bank Transfer"), "bank")
+    with src_tab_comm:
+        render_txn_tab(get_source_df("Commission"), "comm")
+    with src_tab_bonus:
+        render_txn_tab(get_source_df("Bonus"), "bonus")
+
+    st.markdown("---")
+
+    # Source breakdown chart
+    col_src_chart, col_src_vol = st.columns(2)
+    with col_src_chart:
+        st.subheader("Transactions by Source")
+        src_counts = df_txn["Source"].value_counts().reset_index()
+        src_counts.columns = ["Source", "Count"]
+        fig_src = px.pie(src_counts, values="Count", names="Source", hole=0.5, color_discrete_sequence=["#6366f1", "#22c55e", "#3b82f6", "#a855f7", "#f59e0b"])
+        fig_src.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(l=0, r=0, t=10, b=0))
+        fig_src.update_traces(textinfo="none")
+        st.plotly_chart(fig_src, use_container_width=True)
+
+    with col_src_vol:
+        st.subheader("Volume by Source")
+        src_vol = df_txn.groupby("Source")["Amount"].sum().reset_index().sort_values("Amount", ascending=True)
+        fig_vol = px.bar(src_vol, y="Source", x="Amount", orientation="h", color="Source", color_discrete_sequence=["#6366f1", "#22c55e", "#3b82f6", "#a855f7", "#f59e0b"])
+        fig_vol.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+        st.plotly_chart(fig_vol, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Transaction Details")
-    selected_txn = st.selectbox("Select transaction to view details", filtered["ID"].tolist())
+    selected_txn = st.selectbox("Select transaction to view details", df_txn["ID"].tolist())
     if selected_txn:
         tx = df_txn[df_txn["ID"] == selected_txn].iloc[0]
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown(f"**ID:** {tx['ID']}")
             st.markdown(f"**Type:** {tx['Type']}")
+            st.markdown(f"**Source:** {tx['Source']}")
             st.markdown(f"**Amount:** {fmt(tx['Amount'])} {tx['Currency']}")
+        with c2:
             st.markdown(f"**Status:** {tx['Status']}")
             st.markdown(f"**Client:** {tx['Client']}")
-        with c2:
             st.markdown(f"**Source System:** {tx['Source System']}")
             st.markdown(f"**PSP:** {tx['PSP']}")
+        with c3:
             st.markdown(f"**Bank:** {tx['Bank']}")
             st.markdown(f"**Timestamp:** {tx['Timestamp']}")
             st.markdown(f"**Description:** {tx['Description']}")
