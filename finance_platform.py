@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import random
+import io
 
 # ══════════════════════════════════════════════════════════════
 # PAGE CONFIG
@@ -295,6 +296,7 @@ with st.sidebar:
         "💧 Liquidity & Treasury",
         f"⚠️ Alerts & Exceptions ({open_alerts})",
         "📈 Reports & Analytics",
+        "📂 File Upload",
     ], label_visibility="collapsed")
     st.markdown("---")
     st.markdown("🟢 **System Online**")
@@ -851,3 +853,186 @@ elif page == "📈 Reports & Analytics":
             {"Report": "Basel III Regulatory Report", "Period": "Q1 2026", "Standard": "Basel III", "Status": "Ready"},
             {"Report": "Daily Finance Report", "Period": "May 18, 2026", "Standard": "IAS 1", "Status": "Scheduled"},
         ]), use_container_width=True, hide_index=True)
+
+
+# ══════════════════════════════════════════════════════════════
+# 9. FILE UPLOAD
+# ══════════════════════════════════════════════════════════════
+elif page == "📂 File Upload":
+    st.title("📂 File Upload")
+    st.caption("Upload Word (.docx), Excel (.xlsx), CSV, or PDF files to view and analyze data")
+
+    uploaded_files = st.file_uploader(
+        "Drop files here or click to browse",
+        type=["docx", "xlsx", "xls", "csv", "pdf", "txt"],
+        accept_multiple_files=True,
+        help="Supported: .docx, .xlsx, .xls, .csv, .pdf, .txt"
+    )
+
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
+            file_size = uploaded_file.size
+            size_str = f"{file_size / 1024:.1f} KB" if file_size < 1048576 else f"{file_size / 1048576:.1f} MB"
+
+            st.markdown("---")
+            st.subheader(f"📄 {uploaded_file.name}")
+            st.caption(f"Type: .{file_ext} | Size: {size_str}")
+
+            try:
+                # ── CSV ──
+                if file_ext == "csv":
+                    df_upload = pd.read_csv(uploaded_file)
+                    st.success(f"Loaded {len(df_upload)} rows × {len(df_upload.columns)} columns")
+
+                    tab_data, tab_stats, tab_chart = st.tabs(["Data", "Statistics", "Quick Chart"])
+                    with tab_data:
+                        st.dataframe(df_upload, use_container_width=True, hide_index=True)
+                    with tab_stats:
+                        st.dataframe(df_upload.describe(), use_container_width=True)
+                    with tab_chart:
+                        numeric_cols = df_upload.select_dtypes(include="number").columns.tolist()
+                        if numeric_cols:
+                            chart_col = st.selectbox("Select column to chart", numeric_cols, key=f"chart_{uploaded_file.name}")
+                            fig = px.histogram(df_upload, x=chart_col, color_discrete_sequence=["#6366f1"])
+                            fig.update_layout(**PLOTLY_LAYOUT, height=300)
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("No numeric columns found for charting")
+
+                    csv_download = df_upload.to_csv(index=False).encode("utf-8")
+                    st.download_button("📥 Download as CSV", csv_download, f"{uploaded_file.name}", "text/csv", key=f"dl_csv_{uploaded_file.name}")
+
+                # ── Excel ──
+                elif file_ext in ["xlsx", "xls"]:
+                    from openpyxl import load_workbook
+                    xls = pd.ExcelFile(uploaded_file)
+                    sheet_names = xls.sheet_names
+                    st.info(f"Found {len(sheet_names)} sheet(s): {', '.join(sheet_names)}")
+
+                    selected_sheet = st.selectbox("Select sheet", sheet_names, key=f"sheet_{uploaded_file.name}")
+                    df_upload = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+                    st.success(f"Sheet '{selected_sheet}': {len(df_upload)} rows × {len(df_upload.columns)} columns")
+
+                    tab_data, tab_stats, tab_chart = st.tabs(["Data", "Statistics", "Quick Chart"])
+                    with tab_data:
+                        st.dataframe(df_upload, use_container_width=True, hide_index=True)
+                    with tab_stats:
+                        st.dataframe(df_upload.describe(), use_container_width=True)
+                    with tab_chart:
+                        numeric_cols = df_upload.select_dtypes(include="number").columns.tolist()
+                        if numeric_cols:
+                            chart_col = st.selectbox("Select column", numeric_cols, key=f"xchart_{uploaded_file.name}")
+                            fig = px.histogram(df_upload, x=chart_col, color_discrete_sequence=["#6366f1"])
+                            fig.update_layout(**PLOTLY_LAYOUT, height=300)
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("No numeric columns found for charting")
+
+                    csv_download = df_upload.to_csv(index=False).encode("utf-8")
+                    st.download_button("📥 Download as CSV", csv_download, f"{uploaded_file.name.rsplit('.', 1)[0]}.csv", "text/csv", key=f"dl_xl_{uploaded_file.name}")
+
+                # ── Word (.docx) ──
+                elif file_ext == "docx":
+                    from docx import Document
+                    doc = Document(uploaded_file)
+
+                    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                    tables_in_doc = doc.tables
+
+                    st.success(f"Loaded: {len(paragraphs)} paragraphs, {len(tables_in_doc)} table(s)")
+
+                    tab_text, tab_tables = st.tabs(["Document Text", f"Tables ({len(tables_in_doc)})"])
+
+                    with tab_text:
+                        if paragraphs:
+                            for para in doc.paragraphs:
+                                if para.text.strip():
+                                    if para.style and para.style.name and "Heading" in para.style.name:
+                                        level = para.style.name.replace("Heading ", "").strip()
+                                        try:
+                                            hashes = "#" * int(level)
+                                        except ValueError:
+                                            hashes = "###"
+                                        st.markdown(f"{hashes} {para.text}")
+                                    else:
+                                        st.markdown(para.text)
+                        else:
+                            st.info("No text content found in document")
+
+                    with tab_tables:
+                        if tables_in_doc:
+                            for t_idx, table in enumerate(tables_in_doc):
+                                st.markdown(f"**Table {t_idx + 1}**")
+                                rows = []
+                                for row in table.rows:
+                                    rows.append([cell.text.strip() for cell in row.cells])
+                                if len(rows) > 1:
+                                    df_table = pd.DataFrame(rows[1:], columns=rows[0])
+                                    st.dataframe(df_table, use_container_width=True, hide_index=True)
+
+                                    csv_download = df_table.to_csv(index=False).encode("utf-8")
+                                    st.download_button(f"📥 Download Table {t_idx + 1} as CSV", csv_download, f"table_{t_idx + 1}.csv", "text/csv", key=f"dl_tbl_{uploaded_file.name}_{t_idx}")
+                                elif len(rows) == 1:
+                                    st.dataframe(pd.DataFrame([rows[0]]), use_container_width=True, hide_index=True)
+                        else:
+                            st.info("No tables found in document")
+
+                # ── PDF ──
+                elif file_ext == "pdf":
+                    from PyPDF2 import PdfReader
+                    reader = PdfReader(uploaded_file)
+                    num_pages = len(reader.pages)
+                    st.success(f"Loaded PDF: {num_pages} page(s)")
+
+                    all_text = []
+                    for i, pg in enumerate(reader.pages):
+                        text = pg.extract_text()
+                        if text:
+                            all_text.append((i + 1, text))
+
+                    if all_text:
+                        view_mode = st.radio("View mode", ["All pages", "Page by page"], horizontal=True, key=f"pdf_mode_{uploaded_file.name}")
+                        if view_mode == "All pages":
+                            for page_num, text in all_text:
+                                st.markdown(f"**— Page {page_num} —**")
+                                st.text(text)
+                        else:
+                            page_select = st.selectbox("Select page", [p[0] for p in all_text], key=f"pdf_pg_{uploaded_file.name}")
+                            for page_num, text in all_text:
+                                if page_num == page_select:
+                                    st.text(text)
+
+                        full_text = "\n\n".join([f"--- Page {p} ---\n{t}" for p, t in all_text])
+                        st.download_button("📥 Download as Text", full_text.encode("utf-8"), f"{uploaded_file.name.rsplit('.', 1)[0]}.txt", "text/plain", key=f"dl_pdf_{uploaded_file.name}")
+                    else:
+                        st.warning("Could not extract text from this PDF (may be image-based)")
+
+                # ── Plain Text ──
+                elif file_ext == "txt":
+                    content = uploaded_file.read().decode("utf-8", errors="replace")
+                    st.success(f"Loaded: {len(content)} characters, {content.count(chr(10)) + 1} lines")
+                    st.text(content)
+
+                else:
+                    st.warning(f"Unsupported file type: .{file_ext}")
+
+            except Exception as e:
+                st.error(f"Error processing {uploaded_file.name}: {str(e)}")
+
+    else:
+        st.markdown("")
+        st.markdown("""
+        <div class="card" style="text-align:center; padding:40px 20px">
+            <div style="font-size:48px; margin-bottom:12px">📂</div>
+            <h4>Upload Files to Get Started</h4>
+            <div class="card-sm" style="margin-top:8px; line-height:1.8">
+                Supported formats:<br>
+                <b>Word</b> (.docx) — view text content and extract tables<br>
+                <b>Excel</b> (.xlsx, .xls) — view sheets, statistics, auto-charts<br>
+                <b>CSV</b> — full data table with statistics and charting<br>
+                <b>PDF</b> — extract and view text content<br>
+                <b>Text</b> (.txt) — plain text viewer
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
