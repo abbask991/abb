@@ -1,52 +1,121 @@
 """
-FinanceOps — Financial Control & Intelligence Platform
-Core: Finance Automation · Smart Reconciliation · Financial Intelligence · Risk Early Warning
-Standards: IFRS · ISO 20022 · ISO 4217 · Basel III · SOX
+FinanceOps — Financial Control & Intelligence Platform v3
+All improvements: Auto-refresh, Theme toggle, Export, Date range, Notifications,
+Client 360, PSP Scorecard, Cash Forecast, Audit Log, Multi-currency, Comparison, Comments
 """
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
-import io
+from datetime import datetime, timedelta
+import io, json
 
 st.set_page_config(page_title="FinanceOps", page_icon="🏛️", layout="wide", initial_sidebar_state="expanded")
 
 # ══════════════════════════════════════════════
-# STYLES
+# SESSION STATE DEFAULTS
 # ══════════════════════════════════════════════
-st.markdown("""<style>
-.main .block-container{padding-top:1rem}
-div[data-testid="stMetric"]{background:#0f1729;border:1px solid #1e2d4a;border-radius:10px;padding:14px 18px}
-div[data-testid="stMetric"] label{font-size:11px!important;text-transform:uppercase;letter-spacing:.5px}
-.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
-.bg-green{background:rgba(16,185,129,.12);color:#10b981}.bg-red{background:rgba(239,68,68,.12);color:#ef4444}
-.bg-yellow{background:rgba(245,158,11,.12);color:#f59e0b}.bg-blue{background:rgba(59,130,246,.12);color:#3b82f6}
-.bg-purple{background:rgba(139,92,246,.12);color:#8b5cf6}.bg-cyan{background:rgba(6,182,212,.12);color:#06b6d4}
-.card{background:#0f1729;border:1px solid #1e2d4a;border-radius:10px;padding:16px 18px;margin-bottom:8px}
-.card h4{font-size:14px;font-weight:700;margin-bottom:8px;color:#e2e8f0}
-.sm{font-size:12px;color:#94a3b8}
-.alert-card{background:#0f1729;border:1px solid #1e2d4a;border-radius:8px;padding:14px 18px;margin-bottom:8px}
-.alert-title{font-weight:600;font-size:13px;margin-bottom:3px}
-.alert-desc{font-size:12px;color:#94a3b8;line-height:1.5}
-.metric-box{background:#0f1729;border:1px solid #1e2d4a;border-radius:8px;padding:12px;text-align:center}
-.metric-box .val{font-size:20px;font-weight:700;color:#e2e8f0}
-.metric-box .lbl{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
-.flow-arrow{text-align:center;font-size:20px;color:#6366f1;margin:4px 0}
-.risk-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0f1729;border:1px solid #1e2d4a;border-radius:8px;margin-bottom:6px}
-.risk-label{font-size:13px;color:#e2e8f0}
-.risk-val{font-weight:700;font-size:13px}
-.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
-.dot-g{background:#10b981}.dot-y{background:#f59e0b}.dot-r{background:#ef4444}
-div[data-testid="stSidebar"]>div:first-child{padding-top:.8rem}
+if "theme" not in st.session_state: st.session_state.theme = "dark"
+if "base_ccy" not in st.session_state: st.session_state.base_ccy = "USD"
+if "comments" not in st.session_state: st.session_state.comments = {}
+if "notifications_read" not in st.session_state: st.session_state.notifications_read = set()
+if "audit_log" not in st.session_state:
+    st.session_state.audit_log = [
+        {"Time": "2026-05-18 11:15", "User": "System", "Action": "Auto-matched REC-001", "Section": "Reconciliation"},
+        {"Time": "2026-05-18 10:30", "User": "Ahmed K.", "Action": "Viewed Dashboard", "Section": "Dashboard"},
+        {"Time": "2026-05-18 10:15", "User": "System", "Action": "Alert ALT-001 created", "Section": "Alerts"},
+        {"Time": "2026-05-18 09:45", "User": "Sarah M.", "Action": "Exported Daily Report", "Section": "Reports"},
+        {"Time": "2026-05-18 09:30", "User": "System", "Action": "Alert ALT-002 created", "Section": "Alerts"},
+        {"Time": "2026-05-18 09:00", "User": "Omar R.", "Action": "Investigated REC-003", "Section": "Reconciliation"},
+        {"Time": "2026-05-18 08:30", "User": "Lina T.", "Action": "Approved REC-008", "Section": "Reconciliation"},
+        {"Time": "2026-05-18 08:00", "User": "System", "Action": "PSP Settlement processed", "Section": "Transactions"},
+        {"Time": "2026-05-18 07:00", "User": "System", "Action": "Alert ALT-006 — LCR breach", "Section": "Alerts"},
+        {"Time": "2026-05-17 23:00", "User": "System", "Action": "Daily reconciliation completed", "Section": "Reconciliation"},
+    ]
+
+# ══════════════════════════════════════════════
+# THEME
+# ══════════════════════════════════════════════
+dark = st.session_state.theme == "dark"
+BG = "#0f1729" if dark else "#ffffff"
+BG2 = "#1e2d4a" if dark else "#e2e8f0"
+TXT = "#e2e8f0" if dark else "#1e293b"
+TXT2 = "#94a3b8" if dark else "#64748b"
+CARD_BG = "#0f1729" if dark else "#f8fafc"
+CARD_BD = "#1e2d4a" if dark else "#e2e8f0"
+
+st.markdown(f"""<style>
+.main .block-container{{padding-top:1rem}}
+div[data-testid="stMetric"]{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:10px;padding:14px 18px}}
+div[data-testid="stMetric"] label{{font-size:11px!important;text-transform:uppercase;letter-spacing:.5px}}
+.badge{{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}}
+.bg-green{{background:rgba(16,185,129,.12);color:#10b981}}.bg-red{{background:rgba(239,68,68,.12);color:#ef4444}}
+.bg-yellow{{background:rgba(245,158,11,.12);color:#f59e0b}}.bg-blue{{background:rgba(59,130,246,.12);color:#3b82f6}}
+.bg-purple{{background:rgba(139,92,246,.12);color:#8b5cf6}}.bg-cyan{{background:rgba(6,182,212,.12);color:#06b6d4}}
+.card{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:10px;padding:16px 18px;margin-bottom:8px}}
+.card h4{{font-size:14px;font-weight:700;margin-bottom:8px;color:{TXT}}}
+.sm{{font-size:12px;color:{TXT2}}}
+.alert-card{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:8px;padding:14px 18px;margin-bottom:8px}}
+.alert-title{{font-weight:600;font-size:13px;margin-bottom:3px;color:{TXT}}}
+.alert-desc{{font-size:12px;color:{TXT2};line-height:1.5}}
+.risk-row{{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:{CARD_BG};border:1px solid {CARD_BD};border-radius:8px;margin-bottom:6px}}
+.risk-label{{font-size:13px;color:{TXT}}}.risk-val{{font-weight:700;font-size:13px}}
+.flow-arrow{{text-align:center;font-size:20px;color:#6366f1;margin:4px 0}}
+.metric-box{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:8px;padding:12px;text-align:center}}
+.metric-box .val{{font-size:20px;font-weight:700;color:{TXT}}}.metric-box .lbl{{font-size:10px;color:{TXT2};text-transform:uppercase;letter-spacing:.5px}}
+.status-dot{{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}}
+.dot-g{{background:#10b981}}.dot-y{{background:#f59e0b}}.dot-r{{background:#ef4444}}
+.notif-badge{{background:#ef4444;color:#fff;border-radius:50%;font-size:10px;font-weight:700;padding:1px 5px;position:relative;top:-8px}}
+.comment-box{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:6px;padding:10px 14px;margin:4px 0;font-size:12px}}
+div[data-testid="stSidebar"]>div:first-child{{padding-top:.8rem}}
 </style>""", unsafe_allow_html=True)
 
-PL = dict(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=0,r=0,t=10,b=0))
+PLT = "plotly_dark" if dark else "plotly_white"
+PL = dict(template=PLT, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=0,r=0,t=10,b=0))
 
-def fmt(n): return f"${n:,.0f}"
+# ══════════════════════════════════════════════
+# FX RATES & HELPERS
+# ══════════════════════════════════════════════
+FX = {"USD":1.0,"EUR":1.0845,"GBP":1.2630,"CHF":1.1175,"JPY":0.00645}
+
+def to_base(amount, ccy):
+    base = st.session_state.base_ccy
+    usd_val = amount * FX.get(ccy, 1.0)
+    if base == "USD": return usd_val
+    return usd_val / FX.get(base, 1.0)
+
+def fmt(n):
+    sym = {"USD":"$","EUR":"€","GBP":"£","CHF":"CHF ","JPY":"¥"}.get(st.session_state.base_ccy, "$")
+    return f"{sym}{n:,.0f}"
+
+def fmt_usd(n): return f"${n:,.0f}"
+
 def badge(t, c="blue"): return f'<span class="badge bg-{c}">{t}</span>'
 def sev_icon(s): return {"Critical":"🔴","High":"🟠","Medium":"🟡","Low":"🔵"}.get(s,"⚪")
-def risk_color(s): return {"Green":"#10b981","Yellow":"#f59e0b","Red":"#ef4444"}.get(s,"#94a3b8")
+
+def export_df(df, name, key):
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(f"📥 Export {name}", csv, f"{name.lower().replace(' ','_')}.csv", "text/csv", key=key)
+
+def add_audit(user, action, section):
+    st.session_state.audit_log.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M"), "User": user, "Action": action, "Section": section})
+
+def add_comment(case_id, comment_text, user="Current User"):
+    if case_id not in st.session_state.comments:
+        st.session_state.comments[case_id] = []
+    st.session_state.comments[case_id].append({"user": user, "text": comment_text, "time": datetime.now().strftime("%H:%M")})
+
+def show_comments(case_id):
+    comments = st.session_state.comments.get(case_id, [])
+    if comments:
+        for c in comments:
+            st.markdown(f'<div class="comment-box"><b>{c["user"]}</b> <span class="sm">({c["time"]})</span><br>{c["text"]}</div>', unsafe_allow_html=True)
+    new = st.text_input(f"Add comment to {case_id}", key=f"cmt_{case_id}", placeholder="Type a comment...")
+    if new:
+        add_comment(case_id, new)
+        add_audit("Current User", f"Commented on {case_id}", "Comments")
+        st.rerun()
 
 # ══════════════════════════════════════════════
 # MOCK DATA
@@ -56,49 +125,49 @@ transactions_data = [
     {"ID":"TXN-002","Type":"Withdrawal","Source":"CRM","Amount":12500,"CCY":"USD","Status":"Settled","Client":"Globe Ltd","Counterparty":"Adyen","Bank":"HSBC","Timestamp":"2026-05-18 09:15","Value_Date":"2026-05-18","Description":"Client withdrawal"},
     {"ID":"TXN-003","Type":"Deposit","Source":"PSP","Amount":8700,"CCY":"EUR","Status":"Pending","Client":"NovaTech","Counterparty":"Stripe","Bank":"Deutsche Bank","Timestamp":"2026-05-18 09:42","Value_Date":"2026-05-18","Description":"PSP settlement T+1"},
     {"ID":"TXN-004","Type":"Transfer","Source":"Bank","Amount":50000,"CCY":"USD","Status":"Settled","Client":"Internal","Counterparty":"Treasury","Bank":"JPMorgan","Timestamp":"2026-05-18 10:01","Value_Date":"2026-05-18","Description":"Treasury rebalancing"},
-    {"ID":"TXN-005","Type":"Fee","Source":"PSP","Amount":125,"CCY":"USD","Status":"Settled","Client":"Acme Corp","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-18 08:23","Value_Date":"2026-05-18","Description":"Processing fee 0.5%"},
-    {"ID":"TXN-006","Type":"Commission","Source":"Commission","Amount":375,"CCY":"USD","Status":"Settled","Client":"IB-Alpha","Counterparty":"IB Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 10:30","Value_Date":"2026-05-18","Description":"IB commission payout"},
+    {"ID":"TXN-005","Type":"Fee","Source":"PSP","Amount":125,"CCY":"USD","Status":"Settled","Client":"Acme Corp","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-18 08:23","Value_Date":"2026-05-18","Description":"Processing fee"},
+    {"ID":"TXN-006","Type":"Commission","Source":"Commission","Amount":375,"CCY":"USD","Status":"Settled","Client":"IB-Alpha","Counterparty":"IB Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 10:30","Value_Date":"2026-05-18","Description":"IB commission"},
     {"ID":"TXN-007","Type":"Deposit","Source":"CRM","Amount":150000,"CCY":"USD","Status":"Settled","Client":"MegaFund","Counterparty":"Worldpay","Bank":"Barclays","Timestamp":"2026-05-17 14:22","Value_Date":"2026-05-17","Description":"High-value deposit"},
-    {"ID":"TXN-008","Type":"Withdrawal","Source":"CRM","Amount":45000,"CCY":"GBP","Status":"Failed","Client":"BritCo","Counterparty":"Adyen","Bank":"Barclays","Timestamp":"2026-05-17 16:45","Value_Date":"2026-05-17","Description":"Failed — insufficient PSP balance"},
-    {"ID":"TXN-009","Type":"Deposit","Source":"PSP","Amount":32000,"CCY":"USD","Status":"Settled","Client":"SolarInc","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-17 11:10","Value_Date":"2026-05-17","Description":"PSP batch settlement"},
-    {"ID":"TXN-010","Type":"Withdrawal","Source":"CRM","Amount":18200,"CCY":"EUR","Status":"Pending","Client":"EuroTrade","Counterparty":"Adyen","Bank":"Deutsche Bank","Timestamp":"2026-05-18 07:50","Value_Date":"2026-05-18","Description":"Pending withdrawal T+1"},
+    {"ID":"TXN-008","Type":"Withdrawal","Source":"CRM","Amount":45000,"CCY":"GBP","Status":"Failed","Client":"BritCo","Counterparty":"Adyen","Bank":"Barclays","Timestamp":"2026-05-17 16:45","Value_Date":"2026-05-17","Description":"Failed — insufficient PSP"},
+    {"ID":"TXN-009","Type":"Deposit","Source":"PSP","Amount":32000,"CCY":"USD","Status":"Settled","Client":"SolarInc","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-17 11:10","Value_Date":"2026-05-17","Description":"PSP settlement"},
+    {"ID":"TXN-010","Type":"Withdrawal","Source":"CRM","Amount":18200,"CCY":"EUR","Status":"Pending","Client":"EuroTrade","Counterparty":"Adyen","Bank":"Deutsche Bank","Timestamp":"2026-05-18 07:50","Value_Date":"2026-05-18","Description":"Pending withdrawal"},
     {"ID":"TXN-011","Type":"Fee","Source":"PSP","Amount":89,"CCY":"USD","Status":"Settled","Client":"MegaFund","Counterparty":"Worldpay","Bank":"Barclays","Timestamp":"2026-05-17 14:22","Value_Date":"2026-05-17","Description":"Processing fee"},
-    {"ID":"TXN-012","Type":"Deposit","Source":"CRM","Amount":5600,"CCY":"USD","Status":"Reversed","Client":"QuickPay","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-16 09:30","Value_Date":"2026-05-16","Description":"Chargeback reversal"},
+    {"ID":"TXN-012","Type":"Deposit","Source":"CRM","Amount":5600,"CCY":"USD","Status":"Reversed","Client":"QuickPay","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-16 09:30","Value_Date":"2026-05-16","Description":"Chargeback"},
     {"ID":"TXN-013","Type":"Transfer","Source":"Bank","Amount":200000,"CCY":"USD","Status":"Settled","Client":"Internal","Counterparty":"Treasury","Bank":"JPMorgan","Timestamp":"2026-05-16 15:00","Value_Date":"2026-05-16","Description":"Liquidity rebalancing"},
     {"ID":"TXN-014","Type":"Commission","Source":"Commission","Amount":1250,"CCY":"USD","Status":"Settled","Client":"IB-Beta","Counterparty":"IB Engine","Bank":"JPMorgan","Timestamp":"2026-05-16 16:00","Value_Date":"2026-05-16","Description":"Monthly IB commission"},
     {"ID":"TXN-015","Type":"Deposit","Source":"CRM","Amount":72000,"CCY":"USD","Status":"Settled","Client":"TradeCo","Counterparty":"Stripe","Bank":"JPMorgan","Timestamp":"2026-05-15 10:20","Value_Date":"2026-05-15","Description":"Client deposit"},
-    {"ID":"TXN-016","Type":"Bonus","Source":"Bonus","Amount":15000,"CCY":"USD","Status":"Settled","Client":"Acme Corp","Counterparty":"Bonus Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 11:00","Value_Date":"2026-05-18","Description":"Welcome bonus credit"},
+    {"ID":"TXN-016","Type":"Bonus","Source":"Bonus","Amount":15000,"CCY":"USD","Status":"Settled","Client":"Acme Corp","Counterparty":"Bonus Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 11:00","Value_Date":"2026-05-18","Description":"Welcome bonus"},
     {"ID":"TXN-017","Type":"Bonus","Source":"Bonus","Amount":5000,"CCY":"USD","Status":"Settled","Client":"MegaFund","Counterparty":"Bonus Engine","Bank":"Barclays","Timestamp":"2026-05-17 09:00","Value_Date":"2026-05-17","Description":"Loyalty bonus"},
     {"ID":"TXN-018","Type":"Deposit","Source":"PSP","Amount":42000,"CCY":"EUR","Status":"Settled","Client":"EuroTrade","Counterparty":"Adyen","Bank":"Deutsche Bank","Timestamp":"2026-05-18 06:30","Value_Date":"2026-05-18","Description":"PSP settlement"},
     {"ID":"TXN-019","Type":"Transfer","Source":"Bank","Amount":85000,"CCY":"USD","Status":"Settled","Client":"Internal","Counterparty":"Treasury","Bank":"HSBC","Timestamp":"2026-05-18 08:00","Value_Date":"2026-05-18","Description":"Inter-bank transfer"},
-    {"ID":"TXN-020","Type":"Commission","Source":"Commission","Amount":2100,"CCY":"USD","Status":"Pending","Client":"IB-Gamma","Counterparty":"IB Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 11:15","Value_Date":"2026-05-18","Description":"Weekly IB accrual"},
+    {"ID":"TXN-020","Type":"Commission","Source":"Commission","Amount":2100,"CCY":"USD","Status":"Pending","Client":"IB-Gamma","Counterparty":"IB Engine","Bank":"JPMorgan","Timestamp":"2026-05-18 11:15","Value_Date":"2026-05-18","Description":"Weekly accrual"},
 ]
 
 reconciliation_data = [
-    {"Case_ID":"REC-001","TXN_ID":"TXN-001","CRM_Amt":25000,"PSP_Amt":25000,"Bank_Amt":25000,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched across CRM↔PSP↔Bank"},
-    {"Case_ID":"REC-002","TXN_ID":"TXN-003","CRM_Amt":8700,"PSP_Amt":8700,"Bank_Amt":9000,"CCY":"EUR","Status":"Partial","Score":72,"Case_Status":"Investigating","Method":"ID+Time","Notes":"€300 bank variance — FX rounding suspected"},
-    {"Case_ID":"REC-003","TXN_ID":"TXN-008","CRM_Amt":45000,"PSP_Amt":45000,"Bank_Amt":0,"CCY":"GBP","Status":"Exception","Score":0,"Case_Status":"Open","Method":"ID Match","Notes":"No bank record — PSP failed withdrawal"},
+    {"Case_ID":"REC-001","TXN_ID":"TXN-001","CRM_Amt":25000,"PSP_Amt":25000,"Bank_Amt":25000,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched"},
+    {"Case_ID":"REC-002","TXN_ID":"TXN-003","CRM_Amt":8700,"PSP_Amt":8700,"Bank_Amt":9000,"CCY":"EUR","Status":"Partial","Score":72,"Case_Status":"Investigating","Method":"ID+Time","Notes":"€300 variance — FX suspected"},
+    {"Case_ID":"REC-003","TXN_ID":"TXN-008","CRM_Amt":45000,"PSP_Amt":45000,"Bank_Amt":0,"CCY":"GBP","Status":"Exception","Score":0,"Case_Status":"Open","Method":"ID Match","Notes":"No bank record"},
     {"Case_ID":"REC-004","TXN_ID":"TXN-007","CRM_Amt":150000,"PSP_Amt":150000,"Bank_Amt":150000,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched"},
-    {"Case_ID":"REC-005","TXN_ID":"TXN-012","CRM_Amt":5600,"PSP_Amt":5600,"Bank_Amt":5600,"CCY":"USD","Status":"Exception","Score":45,"Case_Status":"Investigating","Method":"Amount+Time","Notes":"Chargeback — PSP reversed, bank pending"},
+    {"Case_ID":"REC-005","TXN_ID":"TXN-012","CRM_Amt":5600,"PSP_Amt":5600,"Bank_Amt":5600,"CCY":"USD","Status":"Exception","Score":45,"Case_Status":"Investigating","Method":"Amount+Time","Notes":"Chargeback pending"},
     {"Case_ID":"REC-006","TXN_ID":"TXN-009","CRM_Amt":32000,"PSP_Amt":32000,"Bank_Amt":32000,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched"},
-    {"Case_ID":"REC-007","TXN_ID":"TXN-010","CRM_Amt":18200,"PSP_Amt":18200,"Bank_Amt":18500,"CCY":"EUR","Status":"Partial","Score":68,"Case_Status":"Open","Method":"ID+Time","Notes":"€300 discrepancy — fee or FX delta"},
+    {"Case_ID":"REC-007","TXN_ID":"TXN-010","CRM_Amt":18200,"PSP_Amt":18200,"Bank_Amt":18500,"CCY":"EUR","Status":"Partial","Score":68,"Case_Status":"Open","Method":"ID+Time","Notes":"€300 discrepancy"},
     {"Case_ID":"REC-008","TXN_ID":"TXN-002","CRM_Amt":12500,"PSP_Amt":12500,"Bank_Amt":12500,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched"},
     {"Case_ID":"REC-009","TXN_ID":"TXN-015","CRM_Amt":72000,"PSP_Amt":72000,"Bank_Amt":72000,"CCY":"USD","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount","Notes":"Auto-matched"},
-    {"Case_ID":"REC-010","TXN_ID":"TXN-018","CRM_Amt":42000,"PSP_Amt":42000,"Bank_Amt":42000,"CCY":"EUR","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount+FX","Notes":"EUR matched at spot rate"},
+    {"Case_ID":"REC-010","TXN_ID":"TXN-018","CRM_Amt":42000,"PSP_Amt":42000,"Bank_Amt":42000,"CCY":"EUR","Status":"Matched","Score":100,"Case_Status":"Closed","Method":"ID+Amount+FX","Notes":"EUR matched"},
 ]
 
 ledger_data = [
-    {"Date":"2026-05-18","Account":"Cash Account","Debit":25000,"Credit":0,"CCY":"USD","Ref":"TXN-001","Narration":"Deposit received — Acme Corp"},
+    {"Date":"2026-05-18","Account":"Cash Account","Debit":25000,"Credit":0,"CCY":"USD","Ref":"TXN-001","Narration":"Deposit — Acme Corp"},
     {"Date":"2026-05-18","Account":"Client Liability","Debit":0,"Credit":25000,"CCY":"USD","Ref":"TXN-001","Narration":"Client funds credited"},
     {"Date":"2026-05-18","Account":"Client Liability","Debit":12500,"Credit":0,"CCY":"USD","Ref":"TXN-002","Narration":"Withdrawal — Globe Ltd"},
     {"Date":"2026-05-18","Account":"Cash Account","Debit":0,"Credit":12500,"CCY":"USD","Ref":"TXN-002","Narration":"Cash disbursed"},
-    {"Date":"2026-05-18","Account":"PSP Account","Debit":8700,"Credit":0,"CCY":"EUR","Ref":"TXN-003","Narration":"PSP receivable — Stripe T+1"},
+    {"Date":"2026-05-18","Account":"PSP Account","Debit":8700,"Credit":0,"CCY":"EUR","Ref":"TXN-003","Narration":"PSP receivable — Stripe"},
     {"Date":"2026-05-18","Account":"Client Liability","Debit":0,"Credit":8700,"CCY":"EUR","Ref":"TXN-003","Narration":"Client funds — NovaTech"},
     {"Date":"2026-05-18","Account":"Cash Account","Debit":50000,"Credit":0,"CCY":"USD","Ref":"TXN-004","Narration":"Treasury transfer in"},
-    {"Date":"2026-05-18","Account":"Cash Account","Debit":0,"Credit":50000,"CCY":"USD","Ref":"TXN-004","Narration":"Treasury transfer out (reserve)"},
-    {"Date":"2026-05-18","Account":"Fee Account","Debit":0,"Credit":125,"CCY":"USD","Ref":"TXN-005","Narration":"Fee revenue recognized"},
+    {"Date":"2026-05-18","Account":"Cash Account","Debit":0,"Credit":50000,"CCY":"USD","Ref":"TXN-004","Narration":"Treasury transfer out"},
+    {"Date":"2026-05-18","Account":"Fee Account","Debit":0,"Credit":125,"CCY":"USD","Ref":"TXN-005","Narration":"Fee revenue"},
     {"Date":"2026-05-18","Account":"Commission Account","Debit":375,"Credit":0,"CCY":"USD","Ref":"TXN-006","Narration":"IB commission expense"},
-    {"Date":"2026-05-18","Account":"Commission Account","Debit":0,"Credit":375,"CCY":"USD","Ref":"TXN-006","Narration":"Commission payable — IB Alpha"},
+    {"Date":"2026-05-18","Account":"Commission Account","Debit":0,"Credit":375,"CCY":"USD","Ref":"TXN-006","Narration":"Commission payable"},
     {"Date":"2026-05-17","Account":"Cash Account","Debit":150000,"Credit":0,"CCY":"USD","Ref":"TXN-007","Narration":"Deposit — MegaFund"},
     {"Date":"2026-05-17","Account":"Client Liability","Debit":0,"Credit":150000,"CCY":"USD","Ref":"TXN-007","Narration":"Client funds — MegaFund"},
     {"Date":"2026-05-17","Account":"Cash Account","Debit":32000,"Credit":0,"CCY":"USD","Ref":"TXN-009","Narration":"PSP settlement — SolarInc"},
@@ -106,33 +175,31 @@ ledger_data = [
 ]
 
 alerts_data = [
-    {"ID":"ALT-001","Title":"Cash Position Imbalance","Category":"Financial","Severity":"Critical","Status":"Open","Description":"GL cash balance deviates from bank by $12,400.","SLA":"4h","Linked":"TXN-004","Created":"2026-05-18 10:15"},
-    {"ID":"ALT-002","Title":"Withdrawal Spike Detected","Category":"Financial","Severity":"High","Status":"Investigating","Description":"Withdrawal volume 340% above 30-day average.","SLA":"8h","Linked":"TXN-002, TXN-010","Created":"2026-05-18 09:30"},
-    {"ID":"ALT-003","Title":"PSP Settlement Delay — Adyen","Category":"Operational","Severity":"Medium","Status":"Open","Description":"Adyen batch delayed 4h beyond SLA. Pending: €63,200.","SLA":"12h","Linked":"TXN-010","Created":"2026-05-18 08:00"},
-    {"ID":"ALT-004","Title":"Reconciliation Exception Rate 20%","Category":"Operational","Severity":"High","Status":"Investigating","Description":"Above 5% threshold — 2 unresolved exceptions.","SLA":"4h","Linked":"REC-003, REC-005","Created":"2026-05-18 10:00"},
-    {"ID":"ALT-005","Title":"Chargeback — Provision Required","Category":"Financial","Severity":"Medium","Status":"Resolved","Description":"TXN-012 chargeback booked. Provision updated.","SLA":"24h","Linked":"TXN-012","Created":"2026-05-16 10:30"},
-    {"ID":"ALT-006","Title":"Liquidity Buffer Below Threshold","Category":"Financial","Severity":"Critical","Status":"Open","Description":"Buffer at 11.2% — below 15% minimum.","SLA":"2h","Linked":"","Created":"2026-05-18 07:00"},
-    {"ID":"ALT-007","Title":"Unexplained Transaction Detected","Category":"Compliance","Severity":"High","Status":"Open","Description":"$35,000 credit with no matching CRM record. Requires AML review.","SLA":"4h","Linked":"","Created":"2026-05-18 11:00"},
+    {"ID":"ALT-001","Title":"Cash Position Imbalance","Category":"Financial","Severity":"Critical","Status":"Open","Description":"GL cash deviates from bank by $12,400.","SLA":"4h","Linked":"TXN-004","Created":"2026-05-18 10:15"},
+    {"ID":"ALT-002","Title":"Withdrawal Spike","Category":"Financial","Severity":"High","Status":"Investigating","Description":"Withdrawal volume 340% above average.","SLA":"8h","Linked":"TXN-002, TXN-010","Created":"2026-05-18 09:30"},
+    {"ID":"ALT-003","Title":"PSP Delay — Adyen","Category":"Operational","Severity":"Medium","Status":"Open","Description":"Adyen batch delayed 4h. Pending: €63,200.","SLA":"12h","Linked":"TXN-010","Created":"2026-05-18 08:00"},
+    {"ID":"ALT-004","Title":"Recon Exception Rate 20%","Category":"Operational","Severity":"High","Status":"Investigating","Description":"Above 5% threshold.","SLA":"4h","Linked":"REC-003, REC-005","Created":"2026-05-18 10:00"},
+    {"ID":"ALT-005","Title":"Chargeback Provision","Category":"Financial","Severity":"Medium","Status":"Resolved","Description":"TXN-012 chargeback booked.","SLA":"24h","Linked":"TXN-012","Created":"2026-05-16 10:30"},
+    {"ID":"ALT-006","Title":"Liquidity Buffer Low","Category":"Financial","Severity":"Critical","Status":"Open","Description":"Buffer at 11.2% — below 15%.","SLA":"2h","Linked":"","Created":"2026-05-18 07:00"},
+    {"ID":"ALT-007","Title":"Unexplained Transaction","Category":"Compliance","Severity":"High","Status":"Open","Description":"$35K credit with no CRM match.","SLA":"4h","Linked":"","Created":"2026-05-18 11:00"},
 ]
 
 bank_balances = [
-    {"Bank":"JPMorgan Chase","CCY":"USD","Balance":2450000},
-    {"Bank":"HSBC","CCY":"USD","Balance":890000},
-    {"Bank":"Deutsche Bank","CCY":"EUR","Balance":1250000},
-    {"Bank":"Barclays","CCY":"GBP","Balance":675000},
+    {"Bank":"JPMorgan","CCY":"USD","Balance":2450000},{"Bank":"HSBC","CCY":"USD","Balance":890000},
+    {"Bank":"Deutsche Bank","CCY":"EUR","Balance":1250000},{"Bank":"Barclays","CCY":"GBP","Balance":675000},
     {"Bank":"Barclays","CCY":"USD","Balance":320000},
 ]
 
 psp_balances = [
-    {"PSP":"Stripe","CCY":"USD","Balance":185000,"Pending_In":32000,"Pending_Out":8500},
-    {"PSP":"Stripe","CCY":"EUR","Balance":45000,"Pending_In":8700,"Pending_Out":0},
-    {"PSP":"Adyen","CCY":"USD","Balance":92000,"Pending_In":0,"Pending_Out":12500},
-    {"PSP":"Adyen","CCY":"EUR","Balance":63200,"Pending_In":0,"Pending_Out":18200},
-    {"PSP":"Worldpay","CCY":"USD","Balance":210000,"Pending_In":0,"Pending_Out":0},
-    {"PSP":"Worldpay","CCY":"GBP","Balance":55000,"Pending_In":0,"Pending_Out":45000},
+    {"PSP":"Stripe","CCY":"USD","Balance":185000,"Pending_In":32000,"Pending_Out":8500,"Success_Rate":99.2,"Avg_Settlement":"4.2h","Cost_Per_Txn":0.52},
+    {"PSP":"Stripe","CCY":"EUR","Balance":45000,"Pending_In":8700,"Pending_Out":0,"Success_Rate":98.8,"Avg_Settlement":"5.1h","Cost_Per_Txn":0.48},
+    {"PSP":"Adyen","CCY":"USD","Balance":92000,"Pending_In":0,"Pending_Out":12500,"Success_Rate":97.5,"Avg_Settlement":"6.8h","Cost_Per_Txn":0.61},
+    {"PSP":"Adyen","CCY":"EUR","Balance":63200,"Pending_In":0,"Pending_Out":18200,"Success_Rate":96.1,"Avg_Settlement":"8.2h","Cost_Per_Txn":0.58},
+    {"PSP":"Worldpay","CCY":"USD","Balance":210000,"Pending_In":0,"Pending_Out":0,"Success_Rate":99.5,"Avg_Settlement":"3.5h","Cost_Per_Txn":0.45},
+    {"PSP":"Worldpay","CCY":"GBP","Balance":55000,"Pending_In":0,"Pending_Out":45000,"Success_Rate":98.0,"Avg_Settlement":"5.0h","Cost_Per_Txn":0.55},
 ]
 
-cash_flow = [
+cash_flow_this = [
     {"Date":"May 12","Deposits":185000,"Withdrawals":72000,"Net":113000},
     {"Date":"May 13","Deposits":210000,"Withdrawals":95000,"Net":115000},
     {"Date":"May 14","Deposits":145000,"Withdrawals":120000,"Net":25000},
@@ -141,14 +208,23 @@ cash_flow = [
     {"Date":"May 17","Deposits":320000,"Withdrawals":105000,"Net":215000},
     {"Date":"May 18","Deposits":307700,"Withdrawals":75700,"Net":232000},
 ]
+cash_flow_last = [
+    {"Date":"May 5","Deposits":162000,"Withdrawals":68000,"Net":94000},
+    {"Date":"May 6","Deposits":195000,"Withdrawals":82000,"Net":113000},
+    {"Date":"May 7","Deposits":130000,"Withdrawals":105000,"Net":25000},
+    {"Date":"May 8","Deposits":250000,"Withdrawals":78000,"Net":172000},
+    {"Date":"May 9","Deposits":160000,"Withdrawals":140000,"Net":20000},
+    {"Date":"May 10","Deposits":280000,"Withdrawals":92000,"Net":188000},
+    {"Date":"May 11","Deposits":275000,"Withdrawals":70000,"Net":205000},
+]
 
 profitability = [
-    {"Client":"Acme Corp","Revenue":45000,"Costs":12000,"Profit":33000},
-    {"Client":"Globe Ltd","Revenue":28000,"Costs":9500,"Profit":18500},
-    {"Client":"MegaFund","Revenue":82000,"Costs":18000,"Profit":64000},
-    {"Client":"NovaTech","Revenue":15000,"Costs":6200,"Profit":8800},
-    {"Client":"SolarInc","Revenue":32000,"Costs":8800,"Profit":23200},
-    {"Client":"TradeCo","Revenue":51000,"Costs":14500,"Profit":36500},
+    {"Client":"Acme Corp","Revenue":45000,"Costs":12000,"Profit":33000,"Deposits":6,"Withdrawals":1,"Since":"2024-03-15"},
+    {"Client":"Globe Ltd","Revenue":28000,"Costs":9500,"Profit":18500,"Deposits":3,"Withdrawals":2,"Since":"2024-06-20"},
+    {"Client":"MegaFund","Revenue":82000,"Costs":18000,"Profit":64000,"Deposits":4,"Withdrawals":0,"Since":"2023-11-01"},
+    {"Client":"NovaTech","Revenue":15000,"Costs":6200,"Profit":8800,"Deposits":2,"Withdrawals":0,"Since":"2025-01-10"},
+    {"Client":"SolarInc","Revenue":32000,"Costs":8800,"Profit":23200,"Deposits":3,"Withdrawals":0,"Since":"2024-09-05"},
+    {"Client":"TradeCo","Revenue":51000,"Costs":14500,"Profit":36500,"Deposits":5,"Withdrawals":1,"Since":"2024-01-22"},
 ]
 
 ib_data = [
@@ -173,27 +249,27 @@ df_led = pd.DataFrame(ledger_data)
 df_alerts = pd.DataFrame(alerts_data)
 df_bank = pd.DataFrame(bank_balances)
 df_psp = pd.DataFrame(psp_balances)
-df_cash = pd.DataFrame(cash_flow)
+df_cash = pd.DataFrame(cash_flow_this)
+df_cash_last = pd.DataFrame(cash_flow_last)
 df_profit = pd.DataFrame(profitability)
 df_ib = pd.DataFrame(ib_data)
 df_kpi = pd.DataFrame(monthly_kpis)
 
-# Computed values
+# Computed
 opening_balance = 4250000
 today = "2026-05-18"
-cash_in = df_txn[(df_txn["Type"]=="Deposit") & (df_txn["Value_Date"]==today) & (df_txn["Status"].isin(["Settled","Pending"]))]["Amount"].sum()
-cash_out = df_txn[(df_txn["Type"].isin(["Withdrawal","Fee","Commission"])) & (df_txn["Value_Date"]==today) & (df_txn["Status"].isin(["Settled","Pending"]))]["Amount"].sum()
+cash_in = df_txn[(df_txn["Type"]=="Deposit")&(df_txn["Value_Date"]==today)&(df_txn["Status"].isin(["Settled","Pending"]))]["Amount"].sum()
+cash_out = df_txn[(df_txn["Type"].isin(["Withdrawal","Fee","Commission"]))&(df_txn["Value_Date"]==today)&(df_txn["Status"].isin(["Settled","Pending"]))]["Amount"].sum()
 net_flow = cash_in - cash_out
 total_bank = df_bank["Balance"].sum()
 total_psp = df_psp["Balance"].sum()
 available_cash = total_bank + total_psp
 pending_wd = df_txn[(df_txn["Type"]=="Withdrawal")&(df_txn["Status"]=="Pending")]["Amount"].sum() + df_psp["Pending_Out"].sum()
-bonus_liability = 125000
-commission_liability = 48500
+bonus_liability = 125000; commission_liability = 48500
 net_liquidity = available_cash - pending_wd - bonus_liability - commission_liability
 buffer_pct = (net_liquidity / available_cash * 100) if available_cash > 0 else 0
-matched = len(df_rec[df_rec["Status"]=="Matched"])
-recon_rate = matched / len(df_rec) * 100 if len(df_rec) > 0 else 0
+matched_count = len(df_rec[df_rec["Status"]=="Matched"])
+recon_rate = matched_count / len(df_rec) * 100
 unmatched = len(df_rec[df_rec["Status"].isin(["Partial","Exception"])])
 open_alerts = len(df_alerts[df_alerts["Status"].isin(["Open","Investigating"])])
 
@@ -202,18 +278,47 @@ open_alerts = len(df_alerts[df_alerts["Status"].isin(["Open","Investigating"])])
 # ══════════════════════════════════════════════
 with st.sidebar:
     st.markdown("### 🏛️ **FinanceOps**")
-    st.caption("Financial Control & Intelligence Platform")
+    st.caption("Financial Control & Intelligence")
     st.markdown("---")
+
+    # Theme toggle
+    theme_label = "🌙 Dark" if dark else "☀️ Light"
+    if st.button(f"Theme: {theme_label}", use_container_width=True):
+        st.session_state.theme = "light" if dark else "dark"
+        st.rerun()
+
+    # Multi-currency
+    st.session_state.base_ccy = st.selectbox("💱 Base Currency", ["USD","EUR","GBP"], index=["USD","EUR","GBP"].index(st.session_state.base_ccy))
+
+    # Auto-refresh
+    refresh = st.selectbox("🔄 Auto-Refresh", ["Off","30s","60s","5m"], index=0)
+    if refresh != "Off":
+        secs = {"30s":30,"60s":60,"5m":300}[refresh]
+        st.caption(f"Refreshing every {refresh}")
+        import time
+        st_autorefresh = st.empty()
+
+    st.markdown("---")
+
+    # Notification bell
+    unread = open_alerts - len(st.session_state.notifications_read)
+    notif_label = f"🔔 Notifications ({unread})" if unread > 0 else "🔔 Notifications"
+
     page = st.radio("", [
         "📊 Dashboard",
-        "🏗️ System Architecture",
+        notif_label,
+        "👤 Client 360",
         "💸 Transactions",
         "🔄 Reconciliation",
         "📒 Ledger",
         "💧 Liquidity",
+        "📡 PSP Scorecard",
         f"⚠️ Alerts ({open_alerts})",
-        "📈 Reports & Analytics",
+        "📈 Reports",
+        "🔮 Cash Forecast",
         "🛡️ Risk Monitor",
+        "📋 Audit Log",
+        "🏗️ Architecture",
         "🔌 Integrations",
         "⚙️ Settings",
         "📂 File Upload",
@@ -221,163 +326,176 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("🟢 **System Online**")
     st.caption(datetime.now().strftime("%a, %b %d, %Y — %H:%M"))
-    st.markdown("---")
-    st.caption("**Users Online**")
-    st.caption("👔 CFO · 📊 Finance Mgr · ⚙️ Ops Mgr")
 
 
 # ══════════════════════════════════════════════
-# 1. DASHBOARD — Financial Control Tower
+# PAGES
 # ══════════════════════════════════════════════
+
+# ──────────── DASHBOARD ────────────
 if page == "📊 Dashboard":
     st.title("📊 Dashboard — Financial Control Tower")
-    st.caption("Real-time financial overview for CFO · Finance Manager · Operations Manager")
+    role = st.radio("View as:", ["👔 CFO","📊 Finance Manager","⚙️ Operations"], horizontal=True)
 
-    # Role selector
-    role = st.radio("View as:", ["👔 CFO", "📊 Finance Manager", "⚙️ Operations Manager"], horizontal=True)
+    # Comparison toggle
+    compare = st.toggle("📊 Compare with last week", value=False)
 
-    # ── Financial Overview (all roles)
     st.subheader("💵 Financial Overview")
     f1,f2,f3,f4 = st.columns(4)
     f1.metric("Opening Balance", fmt(opening_balance))
     f2.metric("Cash In Today", fmt(cash_in), f"+{cash_in/opening_balance*100:.1f}%")
     f3.metric("Cash Out Today", fmt(cash_out), f"-{cash_out/opening_balance*100:.1f}%", delta_color="inverse")
-    f4.metric("Net Flow", fmt(net_flow), f"{'+'if net_flow>=0 else ''}{net_flow/opening_balance*100:.1f}%")
+    f4.metric("Net Flow", fmt(net_flow))
 
-    # ── Liquidity (CFO + Finance Manager)
-    if role in ["👔 CFO", "📊 Finance Manager"]:
+    if role in ["👔 CFO","📊 Finance Manager"]:
         st.subheader("💧 Liquidity")
         l1,l2,l3,l4 = st.columns(4)
         l1.metric("Available Cash", fmt(available_cash))
-        l2.metric("Pending Withdrawals", fmt(pending_wd), delta_color="inverse")
+        l2.metric("Pending WD", fmt(pending_wd), delta_color="inverse")
         l3.metric("PSP Balances", fmt(total_psp))
         l4.metric("Net Liquidity", fmt(net_liquidity), f"Buffer: {buffer_pct:.1f}%")
 
-        cl,cr = st.columns(2)
-        with cl:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Deposits"],mode="lines",name="Cash In",fill="tozeroy",line=dict(color="#10b981",width=2),fillcolor="rgba(16,185,129,.12)"))
-            fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Withdrawals"],mode="lines",name="Cash Out",fill="tozeroy",line=dict(color="#ef4444",width=2),fillcolor="rgba(239,68,68,.12)"))
-            fig.update_layout(**PL,height=240,legend=dict(orientation="h",y=1.1))
-            st.plotly_chart(fig,use_container_width=True)
-        with cr:
-            fig2 = px.bar(df_cash,x="Date",y="Net",color_discrete_sequence=["#6366f1"])
-            fig2.update_layout(**PL,height=240,showlegend=False)
-            st.plotly_chart(fig2,use_container_width=True)
+    # Charts with comparison
+    cl,cr = st.columns(2)
+    with cl:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Deposits"],mode="lines",name="Cash In",fill="tozeroy",line=dict(color="#10b981",width=2),fillcolor="rgba(16,185,129,.12)"))
+        fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Withdrawals"],mode="lines",name="Cash Out",fill="tozeroy",line=dict(color="#ef4444",width=2),fillcolor="rgba(239,68,68,.12)"))
+        if compare:
+            fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash_last["Deposits"].values,mode="lines",name="Last Wk In",line=dict(color="#10b981",width=1,dash="dot")))
+            fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash_last["Withdrawals"].values,mode="lines",name="Last Wk Out",line=dict(color="#ef4444",width=1,dash="dot")))
+        fig.update_layout(**PL,height=260,legend=dict(orientation="h",y=1.15))
+        st.plotly_chart(fig,use_container_width=True)
+    with cr:
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(x=df_cash["Date"],y=df_cash["Net"],name="This Week",marker_color="#6366f1"))
+        if compare:
+            fig2.add_trace(go.Bar(x=df_cash["Date"],y=df_cash_last["Net"].values,name="Last Week",marker_color="#94a3b8"))
+        fig2.update_layout(**PL,height=260,barmode="group",showlegend=compare)
+        st.plotly_chart(fig2,use_container_width=True)
 
-    # ── Dashboard Charts (all roles)
-    st.subheader("📊 Quick Financial Charts")
+    # Quick charts
     dc1,dc2,dc3 = st.columns(3)
     with dc1:
-        type_counts = df_txn["Type"].value_counts().reset_index(); type_counts.columns=["Type","Count"]
-        fig_mix = px.pie(type_counts,values="Count",names="Type",hole=0.5,color_discrete_sequence=["#10b981","#ef4444","#6366f1","#f59e0b","#8b5cf6","#06b6d4"])
-        fig_mix.update_layout(**PL,height=220); fig_mix.update_traces(textinfo="value+percent")
-        st.caption("Transaction Mix"); st.plotly_chart(fig_mix,use_container_width=True)
+        tc = df_txn["Type"].value_counts().reset_index(); tc.columns=["Type","Count"]
+        fig_m = px.pie(tc,values="Count",names="Type",hole=0.5,color_discrete_sequence=["#10b981","#ef4444","#6366f1","#f59e0b","#8b5cf6","#06b6d4"])
+        fig_m.update_layout(**PL,height=200); fig_m.update_traces(textinfo="value+percent")
+        st.caption("Transaction Mix"); st.plotly_chart(fig_m,use_container_width=True)
     with dc2:
-        status_counts = df_txn["Status"].value_counts().reset_index(); status_counts.columns=["Status","Count"]
-        fig_st = px.pie(status_counts,values="Count",names="Status",hole=0.5,color_discrete_map={"Settled":"#10b981","Pending":"#f59e0b","Failed":"#ef4444","Reversed":"#8b5cf6"})
-        fig_st.update_layout(**PL,height=220); fig_st.update_traces(textinfo="value+percent")
-        st.caption("Status Breakdown"); st.plotly_chart(fig_st,use_container_width=True)
+        sc = df_txn["Status"].value_counts().reset_index(); sc.columns=["Status","Count"]
+        fig_s = px.pie(sc,values="Count",names="Status",hole=0.5,color_discrete_map={"Settled":"#10b981","Pending":"#f59e0b","Failed":"#ef4444","Reversed":"#8b5cf6"})
+        fig_s.update_layout(**PL,height=200); fig_s.update_traces(textinfo="value+percent")
+        st.caption("Status"); st.plotly_chart(fig_s,use_container_width=True)
     with dc3:
-        psp_bal = df_psp.groupby("PSP")["Balance"].sum().reset_index()
-        fig_psp = px.bar(psp_bal,x="PSP",y="Balance",color="PSP",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
-        fig_psp.update_layout(**PL,height=220,showlegend=False)
-        st.caption("PSP Balances"); st.plotly_chart(fig_psp,use_container_width=True)
+        pb = df_psp.groupby("PSP")["Balance"].sum().reset_index()
+        fig_p = px.bar(pb,x="PSP",y="Balance",color="PSP",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig_p.update_layout(**PL,height=200,showlegend=False)
+        st.caption("PSP Balances"); st.plotly_chart(fig_p,use_container_width=True)
 
-    # Hourly activity
-    df_txn["Hour"] = df_txn["Timestamp"].str.extract(r"(\d{2}):\d{2}").astype(int)
-    hourly = df_txn.groupby("Hour").size().reset_index(name="Count")
-    fig_hourly = px.bar(hourly,x="Hour",y="Count",color_discrete_sequence=["#6366f1"])
-    fig_hourly.update_layout(**PL,height=180,showlegend=False,xaxis_title="Hour of Day",yaxis_title="Transactions")
-    st.caption("Hourly Transaction Activity"); st.plotly_chart(fig_hourly,use_container_width=True)
-
-    # ── Alerts (all roles)
     st.subheader("🚨 Alerts")
-    exceptions_count = len(df_rec[df_rec["Status"]=="Exception"])
-    delays = len(df_alerts[df_alerts["Title"].str.contains("Delay|Settlement",case=False)&(df_alerts["Status"]!="Resolved")])
-    liq_warn = len(df_alerts[df_alerts["Title"].str.contains("Liquidity|Buffer",case=False)&(df_alerts["Status"]!="Resolved")])
     a1,a2,a3 = st.columns(3)
-    a1.metric("Unresolved Exceptions", exceptions_count, delta_color="inverse")
-    a2.metric("Settlement Delays", delays, delta_color="inverse")
-    a3.metric("Liquidity Warnings", liq_warn, delta_color="inverse")
+    a1.metric("Exceptions", len(df_rec[df_rec["Status"]=="Exception"]), delta_color="inverse")
+    a2.metric("Delays", len(df_alerts[df_alerts["Title"].str.contains("Delay",case=False)&(df_alerts["Status"]!="Resolved")]), delta_color="inverse")
+    a3.metric("Liquidity Warnings", len(df_alerts[df_alerts["Title"].str.contains("Liquidity|Buffer",case=False)&(df_alerts["Status"]!="Resolved")]), delta_color="inverse")
 
-    for _, al in df_alerts[df_alerts["Status"].isin(["Open","Investigating"])].iterrows():
-        st.markdown(f'<div class="alert-card"><div class="alert-title">{sev_icon(al["Severity"])} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Category"],"blue")} {badge(al["Status"],"yellow")} <span class="sm" style="margin-left:6px">SLA: {al["SLA"]}</span></div></div>', unsafe_allow_html=True)
+    for _,al in df_alerts[df_alerts["Status"].isin(["Open","Investigating"])].iterrows():
+        st.markdown(f'<div class="alert-card"><div class="alert-title">{sev_icon(al["Severity"])} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Category"],"blue")} {badge(al["Status"],"yellow")}</div></div>',unsafe_allow_html=True)
 
-    # ── KPIs (all roles)
     st.subheader("📈 KPIs")
     k1,k2,k3 = st.columns(3)
-    k1.metric("Daily Volume", f"{len(df_txn[df_txn['Value_Date']==today])} transactions")
-    k2.metric("Reconciliation Rate", f"{recon_rate:.1f}%", f"{matched}/{len(df_rec)} matched")
-    k3.metric("Unmatched Transactions", unmatched, delta_color="inverse")
+    k1.metric("Daily Volume", f"{len(df_txn[df_txn['Value_Date']==today])} txns")
+    k2.metric("Recon Rate", f"{recon_rate:.1f}%", f"{matched_count}/{len(df_rec)}")
+    k3.metric("Unmatched", unmatched, delta_color="inverse")
 
-    # ── Financial Intelligence (CFO)
     if role == "👔 CFO":
         st.subheader("🧠 Financial Intelligence")
-        cl2,cr2 = st.columns(2)
-        with cl2:
+        ci1,ci2 = st.columns(2)
+        with ci1:
             st.markdown("**Top Profitable Clients**")
-            top = df_profit.nlargest(3,"Profit")
-            for _,r in top.iterrows():
-                st.markdown(f'<div class="risk-row"><span class="risk-label">{r["Client"]}</span><span class="risk-val" style="color:#10b981">{fmt(r["Profit"])}</span></div>',unsafe_allow_html=True)
-        with cr2:
-            st.markdown("**Top Costly Clients**")
-            costly = df_profit.nlargest(3,"Costs")
-            for _,r in costly.iterrows():
-                st.markdown(f'<div class="risk-row"><span class="risk-label">{r["Client"]}</span><span class="risk-val" style="color:#ef4444">{fmt(r["Costs"])}</span></div>',unsafe_allow_html=True)
+            for _,r in df_profit.nlargest(3,"Profit").iterrows():
+                st.markdown(f'<div class="risk-row"><span class="risk-label">{r["Client"]}</span><span class="risk-val" style="color:#10b981">{fmt_usd(r["Profit"])}</span></div>',unsafe_allow_html=True)
+        with ci2:
+            st.markdown("**Top Performing IBs**")
+            for _,r in df_ib.nlargest(3,"Net_Revenue").iterrows():
+                st.markdown(f'<div class="risk-row"><span class="risk-label">{r["Partner"]}</span><span class="risk-val" style="color:#6366f1">{fmt_usd(r["Net_Revenue"])}</span></div>',unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════
-# 2. SYSTEM ARCHITECTURE
-# ══════════════════════════════════════════════
-elif page == "🏗️ System Architecture":
-    st.title("🏗️ System Architecture")
-    st.caption("End-to-end pipeline — Connected Systems → Ledger → Analytics → Users")
-
-    layers = [
-        ("1️⃣ Connected Systems", ["CRM", "PSP Gateways (Stripe, Adyen, Worldpay)", "Bank Accounts (JPMorgan, HSBC, Deutsche, Barclays)", "Trading Platform", "Bonus Engine", "Commission Engine"]),
-        ("2️⃣ Data Integration Layer", ["API Connectors (REST, WebSocket, SWIFT)", "File Imports (MT940, CSV, XML)", "Scheduled Data Pull (real-time to hourly)", "Data Validation & Deduplication"]),
-        ("3️⃣ Data Normalization", ["Currency Standardization (ISO 4217)", "Time Standardization (UTC / ISO 8601)", "ID Mapping (cross-system)", "Transaction Type Mapping"]),
-        ("4️⃣ Reconciliation Engine", ["ID Match (CRM ↔ PSP ↔ Bank)", "Amount Match (±tolerance)", "Time Window Match (±24h)", "Auto Exception Detection & Case Creation"]),
-        ("5️⃣ Central Financial Ledger", ["Client Funds", "Company Cash", "Fees", "Commissions", "Adjustments"]),
-    ]
-
-    for title, items in layers:
-        st.subheader(title)
-        cols = st.columns(len(items) if len(items) <= 4 else 3)
-        for i, item in enumerate(items):
-            cols[i % len(cols)].markdown(f'<div class="card" style="text-align:center;min-height:60px"><div class="sm" style="color:#e2e8f0;font-weight:500">{item}</div></div>', unsafe_allow_html=True)
-        st.markdown('<div class="flow-arrow">▼</div>', unsafe_allow_html=True)
-
-    el,er = st.columns(2)
-    with el:
-        st.subheader("6a. Liquidity Engine")
-        for label in ["Available Cash","Pending Withdrawals","PSP Holdbacks","Net Liquidity"]:
-            st.markdown(f'<div class="risk-row"><span class="risk-label">{label}</span><span class="risk-val" style="color:#6366f1">Active</span></div>',unsafe_allow_html=True)
-    with er:
-        st.subheader("6b. Alert & Exception Engine")
-        for label in ["Reconciliation Errors","PSP Delays","Cash Imbalance","Threshold Breach"]:
-            st.markdown(f'<div class="risk-row"><span class="risk-label">{label}</span><span class="risk-val" style="color:#f59e0b">Monitoring</span></div>',unsafe_allow_html=True)
-
-    st.markdown('<div class="flow-arrow">▼</div>', unsafe_allow_html=True)
-    st.subheader("7️⃣ Reporting & Analytics → 8️⃣ End Users")
-    u1,u2,u3,u4,u5 = st.columns(5)
-    for col, (icon, role) in zip([u1,u2,u3,u4,u5], [("👔","CFO"),("📊","Finance Mgr"),("⚙️","Operations"),("🔄","Recon Team"),("🏢","Management")]):
-        col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:24px">{icon}</div><h4 style="font-size:12px">{role}</h4></div>',unsafe_allow_html=True)
+# ──────────── NOTIFICATIONS ────────────
+elif "Notifications" in page:
+    st.title("🔔 Notification Center")
+    for _,al in df_alerts.iterrows():
+        is_read = al["ID"] in st.session_state.notifications_read
+        icon = "📩" if not is_read else "📨"
+        st.markdown(f'<div class="alert-card" style="opacity:{"0.6" if is_read else "1"}"><div class="alert-title">{icon} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Status"],"yellow" if al["Status"]!="Resolved" else "green")} <span class="sm">{al["Created"]}</span></div></div>',unsafe_allow_html=True)
+        if not is_read:
+            if st.button(f"Mark as read", key=f"read_{al['ID']}"):
+                st.session_state.notifications_read.add(al["ID"])
+                st.rerun()
+    if st.button("✅ Mark all as read", use_container_width=True):
+        for _,al in df_alerts.iterrows():
+            st.session_state.notifications_read.add(al["ID"])
+        st.rerun()
 
 
-# ══════════════════════════════════════════════
-# 3. TRANSACTIONS
-# ══════════════════════════════════════════════
+# ──────────── CLIENT 360 ────────────
+elif page == "👤 Client 360":
+    st.title("👤 Client 360 View")
+    clients = sorted(df_txn[df_txn["Client"]!="Internal"]["Client"].unique().tolist())
+    sel_client = st.selectbox("Select Client", clients)
+    client_txns = df_txn[df_txn["Client"]==sel_client]
+    client_profit = df_profit[df_profit["Client"]==sel_client]
+
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Total Transactions", len(client_txns))
+    c2.metric("Total Volume", fmt_usd(client_txns["Amount"].sum()))
+    if len(client_profit) > 0:
+        cp = client_profit.iloc[0]
+        c3.metric("Revenue", fmt_usd(cp["Revenue"]))
+        c4.metric("Profit", fmt_usd(cp["Profit"]), f"Margin: {cp['Profit']/cp['Revenue']*100:.0f}%")
+    else:
+        c3.metric("Revenue", "N/A"); c4.metric("Profit", "N/A")
+
+    cl,cr = st.columns(2)
+    with cl:
+        st.subheader("Transaction History")
+        st.dataframe(client_txns[["ID","Type","Amount","CCY","Status","Timestamp"]],use_container_width=True,hide_index=True)
+        export_df(client_txns, f"{sel_client} Transactions", f"exp_c360_{sel_client}")
+    with cr:
+        st.subheader("Activity by Type")
+        ct = client_txns["Type"].value_counts().reset_index(); ct.columns=["Type","Count"]
+        fig_ct = px.pie(ct,values="Count",names="Type",hole=0.5,color_discrete_sequence=["#10b981","#ef4444","#6366f1","#f59e0b","#8b5cf6"])
+        fig_ct.update_layout(**PL,height=250)
+        st.plotly_chart(fig_ct,use_container_width=True)
+
+    # Volume over time
+    if len(client_txns) > 1:
+        vol_time = client_txns.groupby("Value_Date")["Amount"].sum().reset_index()
+        fig_vt = px.bar(vol_time,x="Value_Date",y="Amount",color_discrete_sequence=["#6366f1"])
+        fig_vt.update_layout(**PL,height=200,title="Volume Over Time",showlegend=False)
+        st.plotly_chart(fig_vt,use_container_width=True)
+
+    # Reconciliation status for this client
+    client_rec = df_rec[df_rec["TXN_ID"].isin(client_txns["ID"])]
+    if len(client_rec) > 0:
+        st.subheader("Reconciliation Status")
+        st.dataframe(client_rec[["Case_ID","TXN_ID","Status","Score","Case_Status","Notes"]],use_container_width=True,hide_index=True)
+
+    # Risk score
+    st.subheader("Client Risk Assessment")
+    failed = len(client_txns[client_txns["Status"]=="Failed"])
+    reversed_count = len(client_txns[client_txns["Status"]=="Reversed"])
+    risk_score = max(0, 100 - failed*20 - reversed_count*15)
+    fig_g = go.Figure(go.Indicator(mode="gauge+number",value=risk_score,title={"text":"Risk Score"},gauge={"axis":{"range":[0,100]},"bar":{"color":"#10b981" if risk_score>70 else "#f59e0b" if risk_score>40 else "#ef4444"},"steps":[{"range":[0,40],"color":"rgba(239,68,68,.1)"},{"range":[40,70],"color":"rgba(245,158,11,.1)"},{"range":[70,100],"color":"rgba(16,185,129,.1)"}]}))
+    fig_g.update_layout(**PL,height=250)
+    st.plotly_chart(fig_g,use_container_width=True)
+
+
+# ──────────── TRANSACTIONS ────────────
 elif page == "💸 Transactions":
     st.title("💸 Transactions")
-    st.caption("Source: CRM · PSP · Bank · Commission · Bonus")
-
     s1,s2,s3,s4,s5 = st.columns(5)
-    s1.metric("CRM",len(df_txn[df_txn["Source"]=="CRM"]))
-    s2.metric("PSP",len(df_txn[df_txn["Source"]=="PSP"]))
-    s3.metric("Bank",len(df_txn[df_txn["Source"]=="Bank"]))
-    s4.metric("Commission",len(df_txn[df_txn["Source"]=="Commission"]))
+    s1.metric("CRM",len(df_txn[df_txn["Source"]=="CRM"])); s2.metric("PSP",len(df_txn[df_txn["Source"]=="PSP"]))
+    s3.metric("Bank",len(df_txn[df_txn["Source"]=="Bank"])); s4.metric("Commission",len(df_txn[df_txn["Source"]=="Commission"]))
     s5.metric("Bonus",len(df_txn[df_txn["Source"]=="Bonus"]))
 
     tabs = st.tabs(["All","CRM","PSP","Bank","Commission","Bonus"])
@@ -385,670 +503,423 @@ elif page == "💸 Transactions":
     for idx,tab in enumerate(tabs):
         with tab:
             base = df_txn if sources[idx]=="All" else df_txn[df_txn["Source"]==sources[idx]]
-            fc1,fc2,fc3,fc4,fc5,fc6 = st.columns(6)
+            fc1,fc2,fc3,fc4 = st.columns(4)
             with fc1: search=st.text_input("Search",key=f"s{idx}",placeholder="ID, client...")
             with fc2: tf=st.selectbox("Type",["All"]+sorted(base["Type"].unique().tolist()),key=f"t{idx}")
             with fc3: sf=st.selectbox("Status",["All"]+sorted(base["Status"].unique().tolist()),key=f"st{idx}")
-            with fc4: pf=st.selectbox("PSP/Counterparty",["All"]+sorted(base["Counterparty"].unique().tolist()),key=f"p{idx}")
-            with fc5: bf=st.selectbox("Bank",["All"]+sorted(base["Bank"].unique().tolist()),key=f"b{idx}")
-            with fc6: cf=st.selectbox("Currency",["All"]+sorted(base["CCY"].unique().tolist()),key=f"c{idx}")
-
+            with fc4: cf=st.selectbox("Currency",["All"]+sorted(base["CCY"].unique().tolist()),key=f"c{idx}")
             f = base.copy()
             if search: f=f[f.apply(lambda r:search.lower() in r["ID"].lower() or search.lower() in r["Client"].lower(),axis=1)]
             if tf!="All": f=f[f["Type"]==tf]
             if sf!="All": f=f[f["Status"]==sf]
-            if pf!="All": f=f[f["Counterparty"]==pf]
-            if bf!="All": f=f[f["Bank"]==bf]
             if cf!="All": f=f[f["CCY"]==cf]
+            st.dataframe(f[["ID","Type","Source","Client","Amount","CCY","Counterparty","Bank","Status","Timestamp"]],use_container_width=True,hide_index=True)
+            export_df(f, f"Transactions_{sources[idx]}", f"exp_txn_{idx}")
 
-            st.caption(f"{len(f)} of {len(base)} transactions")
-            st.dataframe(f[["ID","Type","Source","Client","Amount","CCY","Counterparty","Bank","Status","Timestamp"]],use_container_width=True,hide_index=True,column_config={"Amount":st.column_config.NumberColumn(format="%.2f")})
-
-    st.markdown("---")
-
-    # Transaction Analytics Charts
-    st.subheader("📊 Transaction Analytics")
+    # Charts
     tc1,tc2 = st.columns(2)
     with tc1:
-        src_vol = df_txn.groupby("Source")["Amount"].sum().reset_index().sort_values("Amount",ascending=True)
-        fig_sv = px.bar(src_vol,y="Source",x="Amount",orientation="h",color="Source",color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#8b5cf6","#06b6d4"])
-        fig_sv.update_layout(**PL,height=240,showlegend=False,title="Volume by Source")
-        st.plotly_chart(fig_sv,use_container_width=True)
+        sv = df_txn.groupby("Source")["Amount"].sum().reset_index().sort_values("Amount",ascending=True)
+        fig=px.bar(sv,y="Source",x="Amount",orientation="h",color="Source",color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#8b5cf6","#06b6d4"])
+        fig.update_layout(**PL,height=220,showlegend=False,title="Volume by Source"); st.plotly_chart(fig,use_container_width=True)
     with tc2:
-        src_cnt = df_txn["Source"].value_counts().reset_index(); src_cnt.columns=["Source","Count"]
-        fig_sc = px.pie(src_cnt,values="Count",names="Source",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#8b5cf6","#06b6d4"])
-        fig_sc.update_layout(**PL,height=240); fig_sc.update_traces(textinfo="value+percent")
-        fig_sc.update_layout(title="Transactions by Source")
-        st.plotly_chart(fig_sc,use_container_width=True)
-
-    tc3,tc4 = st.columns(2)
-    with tc3:
-        daily_vol = df_txn.groupby("Value_Date").size().reset_index(name="Count").sort_values("Value_Date")
-        fig_dv = px.line(daily_vol,x="Value_Date",y="Count",markers=True,color_discrete_sequence=["#6366f1"])
-        fig_dv.update_layout(**PL,height=220,title="Daily Transaction Volume")
-        st.plotly_chart(fig_dv,use_container_width=True)
-    with tc4:
-        fig_hist = px.histogram(df_txn,x="Amount",nbins=15,color_discrete_sequence=["#8b5cf6"])
-        fig_hist.update_layout(**PL,height=220,title="Amount Distribution")
-        st.plotly_chart(fig_hist,use_container_width=True)
-
-    tc5,tc6 = st.columns(2)
-    with tc5:
-        client_vol = df_txn.groupby("Client")["Amount"].sum().nlargest(8).reset_index()
-        fig_cv = px.bar(client_vol,x="Client",y="Amount",color_discrete_sequence=["#10b981"])
-        fig_cv.update_layout(**PL,height=220,showlegend=False,title="Top Clients by Volume")
-        st.plotly_chart(fig_cv,use_container_width=True)
-    with tc6:
-        ccy_vol = df_txn.groupby("CCY")["Amount"].sum().reset_index()
-        fig_ccv = px.pie(ccy_vol,values="Amount",names="CCY",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444"])
-        fig_ccv.update_layout(**PL,height=220); fig_ccv.update_traces(textinfo="value+percent")
-        fig_ccv.update_layout(title="Volume by Currency")
-        st.plotly_chart(fig_ccv,use_container_width=True)
-
-    st.markdown("---")
-    st.subheader("Transaction Details")
-    sel=st.selectbox("Select transaction",df_txn["ID"].tolist())
-    if sel:
-        tx=df_txn[df_txn["ID"]==sel].iloc[0]
-        c1,c2,c3=st.columns(3)
-        c1.markdown(f"**ID:** {tx['ID']}\n\n**Type:** {tx['Type']}\n\n**Source:** {tx['Source']}\n\n**Amount:** {tx['Amount']:,.2f} {tx['CCY']}")
-        c2.markdown(f"**Status:** {tx['Status']}\n\n**Client:** {tx['Client']}\n\n**Counterparty:** {tx['Counterparty']}\n\n**Bank:** {tx['Bank']}")
-        c3.markdown(f"**Timestamp:** {tx['Timestamp']}\n\n**Value Date:** {tx['Value_Date']}\n\n**Description:** {tx['Description']}")
+        fig_h=px.histogram(df_txn,x="Amount",nbins=15,color_discrete_sequence=["#8b5cf6"])
+        fig_h.update_layout(**PL,height=220,title="Amount Distribution"); st.plotly_chart(fig_h,use_container_width=True)
 
 
-# ══════════════════════════════════════════════
-# 4. RECONCILIATION — Smart Engine
-# ══════════════════════════════════════════════
+# ──────────── RECONCILIATION ────────────
 elif page == "🔄 Reconciliation":
     st.title("🔄 Smart Reconciliation Engine")
-    st.caption("3-way match: CRM ↔ PSP ↔ Bank — Auto case creation for exceptions")
-
-    m=len(df_rec[df_rec["Status"]=="Matched"])
-    p=len(df_rec[df_rec["Status"]=="Partial"])
-    e=len(df_rec[df_rec["Status"]=="Exception"])
+    st.caption("3-way match: CRM ↔ PSP ↔ Bank")
+    m=len(df_rec[df_rec["Status"]=="Matched"]); p=len(df_rec[df_rec["Status"]=="Partial"]); e=len(df_rec[df_rec["Status"]=="Exception"])
     c1,c2,c3,c4=st.columns(4)
-    c1.metric("✅ Matched",m,f"{m/len(df_rec)*100:.0f}%")
-    c2.metric("⚠️ Partial",p,f"{p/len(df_rec)*100:.0f}%")
-    c3.metric("❌ Exceptions",e,delta_color="inverse")
-    c4.metric("Recon Rate",f"{m/len(df_rec)*100:.1f}%")
+    c1.metric("✅ Matched",m); c2.metric("⚠️ Partial",p); c3.metric("❌ Exceptions",e,delta_color="inverse"); c4.metric("Rate",f"{m/len(df_rec)*100:.1f}%")
 
-    # Recon Charts
-    rc1,rc2,rc3 = st.columns(3)
+    # Charts
+    rc1,rc2 = st.columns(2)
     with rc1:
-        rec_pie = pd.DataFrame({"Status":["Matched","Partial","Exception"],"Count":[m,p,e]})
-        fig_rp = px.pie(rec_pie,values="Count",names="Status",hole=0.55,color_discrete_map={"Matched":"#10b981","Partial":"#f59e0b","Exception":"#ef4444"})
-        fig_rp.update_layout(**PL,height=220); fig_rp.update_traces(textinfo="value+percent")
-        st.caption("Match Distribution"); st.plotly_chart(fig_rp,use_container_width=True)
+        rp=pd.DataFrame({"Status":["Matched","Partial","Exception"],"Count":[m,p,e]})
+        fig_rp=px.pie(rp,values="Count",names="Status",hole=0.55,color_discrete_map={"Matched":"#10b981","Partial":"#f59e0b","Exception":"#ef4444"})
+        fig_rp.update_layout(**PL,height=220); fig_rp.update_traces(textinfo="value+percent"); st.plotly_chart(fig_rp,use_container_width=True)
     with rc2:
-        fig_score = px.histogram(df_rec,x="Score",nbins=10,color_discrete_sequence=["#6366f1"])
-        fig_score.update_layout(**PL,height=220,title="Score Distribution")
-        st.plotly_chart(fig_score,use_container_width=True)
-    with rc3:
-        method_cnt = df_rec["Method"].value_counts().reset_index(); method_cnt.columns=["Method","Count"]
-        fig_mc = px.bar(method_cnt,x="Method",y="Count",color_discrete_sequence=["#8b5cf6"])
-        fig_mc.update_layout(**PL,height=220,showlegend=False,title="Match Methods Used")
-        st.plotly_chart(fig_mc,use_container_width=True)
-
-    # Variance chart
-    variance_data = df_rec[df_rec["Status"].isin(["Partial","Exception"])].copy()
-    if len(variance_data) > 0:
-        variance_data["Variance"] = variance_data["Bank_Amt"] - variance_data["CRM_Amt"]
-        fig_var = px.bar(variance_data,x="Case_ID",y="Variance",color=variance_data["Variance"].apply(lambda x:"Surplus" if x>0 else "Deficit" if x<0 else "Zero"),color_discrete_map={"Surplus":"#10b981","Deficit":"#ef4444","Zero":"#94a3b8"})
-        fig_var.update_layout(**PL,height=200,showlegend=True,title="Variance Analysis (Bank − CRM)")
-        st.plotly_chart(fig_var,use_container_width=True)
+        fig_sc=px.histogram(df_rec,x="Score",nbins=10,color_discrete_sequence=["#6366f1"])
+        fig_sc.update_layout(**PL,height=220,title="Score Distribution"); st.plotly_chart(fig_sc,use_container_width=True)
 
     tab1,tab2,tab3=st.tabs(["Matched","Partial","Exceptions"])
     for tab,status in [(tab1,"Matched"),(tab2,"Partial"),(tab3,"Exception")]:
         with tab:
             data=df_rec[df_rec["Status"]==status]
-            st.dataframe(data[["Case_ID","TXN_ID","CRM_Amt","PSP_Amt","Bank_Amt","CCY","Score","Method","Case_Status","Notes"]],use_container_width=True,hide_index=True,
-                column_config={"Score":st.column_config.ProgressColumn(min_value=0,max_value=100,format="%d%%"),"CRM_Amt":st.column_config.NumberColumn(format="%.0f"),"PSP_Amt":st.column_config.NumberColumn(format="%.0f"),"Bank_Amt":st.column_config.NumberColumn(format="%.0f")})
+            st.dataframe(data[["Case_ID","TXN_ID","CRM_Amt","PSP_Amt","Bank_Amt","CCY","Score","Method","Case_Status","Notes"]],use_container_width=True,hide_index=True,column_config={"Score":st.column_config.ProgressColumn(min_value=0,max_value=100,format="%d%%")})
+            export_df(data, f"Recon_{status}", f"exp_rec_{status}")
 
     st.markdown("---")
-    st.subheader("Case Actions")
+    st.subheader("Case Actions & Comments")
     open_cases=df_rec[df_rec["Case_Status"].isin(["Open","Investigating"])]
     if len(open_cases)>0:
         sel=st.selectbox("Select case",open_cases["Case_ID"].tolist())
         cs=df_rec[df_rec["Case_ID"]==sel].iloc[0]
-        st.info(f"**{cs['Case_ID']}** — {cs['Notes']} | CRM: {cs['CRM_Amt']:,.0f} | PSP: {cs['PSP_Amt']:,.0f} | Bank: {cs['Bank_Amt']:,.0f}")
+        st.info(f"**{cs['Case_ID']}** — {cs['Notes']}")
         bc1,bc2,bc3=st.columns(3)
-        bc1.button("🔍 Investigate",key="inv",use_container_width=True)
-        bc2.button("✅ Approve",key="app",use_container_width=True)
-        bc3.button("❌ Reject",key="rej",use_container_width=True)
+        if bc1.button("🔍 Investigate",key="inv",use_container_width=True): add_audit("Current User",f"Investigated {sel}","Reconciliation")
+        if bc2.button("✅ Approve",key="app",use_container_width=True): add_audit("Current User",f"Approved {sel}","Reconciliation")
+        if bc3.button("❌ Reject",key="rej",use_container_width=True): add_audit("Current User",f"Rejected {sel}","Reconciliation")
+        show_comments(sel)
 
 
-# ══════════════════════════════════════════════
-# 5. LEDGER — Single Source of Truth
-# ══════════════════════════════════════════════
+# ──────────── LEDGER ────────────
 elif page == "📒 Ledger":
     st.title("📒 Ledger — Single Source of Truth")
-    st.caption("Date · Account · Debit · Credit · Reference")
-
-    total_dr=df_led["Debit"].sum()
-    total_cr=df_led["Credit"].sum()
+    dr=df_led["Debit"].sum(); cr_total=df_led["Credit"].sum()
     c1,c2,c3,c4=st.columns(4)
-    c1.metric("Total Debits",fmt(total_dr))
-    c2.metric("Total Credits",fmt(total_cr))
-    c3.metric("Balance Check","✅ Balanced" if abs(total_dr-total_cr)<0.01 else "❌ Imbalanced")
-    c4.metric("Entries",len(df_led))
+    c1.metric("Debits",fmt_usd(dr)); c2.metric("Credits",fmt_usd(cr_total))
+    c3.metric("Balance","✅ OK" if abs(dr-cr_total)<0.01 else "❌"); c4.metric("Entries",len(df_led))
 
-    # Ledger Charts
     lc1,lc2 = st.columns(2)
     with lc1:
-        acct_dr = df_led.groupby("Account")["Debit"].sum().reset_index()
-        acct_cr = df_led.groupby("Account")["Credit"].sum().reset_index()
-        fig_drcr = go.Figure()
-        fig_drcr.add_trace(go.Bar(x=acct_dr["Account"],y=acct_dr["Debit"],name="Debit",marker_color="#06b6d4"))
-        fig_drcr.add_trace(go.Bar(x=acct_cr["Account"],y=acct_cr["Credit"],name="Credit",marker_color="#8b5cf6"))
-        fig_drcr.update_layout(**PL,height=260,barmode="group",title="Debit vs Credit by Account")
-        st.plotly_chart(fig_drcr,use_container_width=True)
+        adr=df_led.groupby("Account")["Debit"].sum().reset_index(); acr=df_led.groupby("Account")["Credit"].sum().reset_index()
+        fig=go.Figure(); fig.add_trace(go.Bar(x=adr["Account"],y=adr["Debit"],name="Debit",marker_color="#06b6d4")); fig.add_trace(go.Bar(x=acr["Account"],y=acr["Credit"],name="Credit",marker_color="#8b5cf6"))
+        fig.update_layout(**PL,height=240,barmode="group",title="DR vs CR by Account"); st.plotly_chart(fig,use_container_width=True)
     with lc2:
-        daily_entries = df_led.groupby("Date").size().reset_index(name="Entries")
-        fig_de = px.bar(daily_entries,x="Date",y="Entries",color_discrete_sequence=["#6366f1"])
-        fig_de.update_layout(**PL,height=260,showlegend=False,title="Daily Journal Volume")
-        st.plotly_chart(fig_de,use_container_width=True)
+        ac=df_led["Account"].value_counts().reset_index(); ac.columns=["Account","Count"]
+        fig_ac=px.pie(ac,values="Count",names="Account",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
+        fig_ac.update_layout(**PL,height=240); fig_ac.update_traces(textinfo="value+percent"); st.plotly_chart(fig_ac,use_container_width=True)
 
-    lc3,lc4 = st.columns(2)
-    with lc3:
-        acct_counts = df_led["Account"].value_counts().reset_index(); acct_counts.columns=["Account","Entries"]
-        fig_ac = px.pie(acct_counts,values="Entries",names="Account",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
-        fig_ac.update_layout(**PL,height=240); fig_ac.update_traces(textinfo="value+percent")
-        fig_ac.update_layout(title="Entries by Account")
-        st.plotly_chart(fig_ac,use_container_width=True)
-    with lc4:
-        net_by_acct = df_led.groupby("Account").agg(Net=("Debit","sum")).reset_index()
-        net_by_acct["Net"] = df_led.groupby("Account")["Debit"].sum().values - df_led.groupby("Account")["Credit"].sum().values
-        fig_nb = px.bar(net_by_acct,x="Account",y="Net",color=net_by_acct["Net"].apply(lambda x:"Positive" if x>=0 else "Negative"),color_discrete_map={"Positive":"#10b981","Negative":"#ef4444"})
-        fig_nb.update_layout(**PL,height=240,showlegend=False,title="Net Balance by Account")
-        st.plotly_chart(fig_nb,use_container_width=True)
+    af=st.selectbox("Filter Account",["All","Client Liability","Cash Account","PSP Account","Fee Account","Commission Account"])
+    view=df_led if af=="All" else df_led[df_led["Account"]==af]
+    st.dataframe(view,use_container_width=True,hide_index=True,column_config={"Debit":st.column_config.NumberColumn(format="$%.2f"),"Credit":st.column_config.NumberColumn(format="$%.2f")})
+    export_df(view, "Ledger", "exp_led")
 
-    acct_filter=st.selectbox("Filter by Account",["All","Client Liability","Cash Account","PSP Account","Fee Account","Commission Account"])
-    view = df_led if acct_filter=="All" else df_led[df_led["Account"]==acct_filter]
-
-    st.dataframe(view[["Date","Account","Debit","Credit","CCY","Ref","Narration"]],use_container_width=True,hide_index=True,column_config={"Debit":st.column_config.NumberColumn(format="$%.2f"),"Credit":st.column_config.NumberColumn(format="$%.2f")})
-
-    st.markdown("---")
-    st.subheader("Account Balances")
     tb=df_led.groupby("Account").agg(Debits=("Debit","sum"),Credits=("Credit","sum"),Entries=("Ref","count")).reset_index()
     tb["Net"]=tb["Debits"]-tb["Credits"]
-    st.dataframe(tb,use_container_width=True,hide_index=True,column_config={"Debits":st.column_config.NumberColumn(format="$%.0f"),"Credits":st.column_config.NumberColumn(format="$%.0f"),"Net":st.column_config.NumberColumn(format="$%.0f")})
-
-    st.subheader("Audit Trail")
-    st.dataframe(df_led.sort_values("Date",ascending=False).head(10)[["Date","Account","Debit","Credit","Ref","Narration"]],use_container_width=True,hide_index=True)
+    st.subheader("Trial Balance"); st.dataframe(tb,use_container_width=True,hide_index=True)
 
 
-# ══════════════════════════════════════════════
-# 6. LIQUIDITY
-# ══════════════════════════════════════════════
+# ──────────── LIQUIDITY ────────────
 elif page == "💧 Liquidity":
     st.title("💧 Liquidity Intelligence")
-    st.caption("Net Available Liquidity = Banks + PSP − Pending − Liabilities")
-
     c1,c2,c3,c4=st.columns(4)
-    c1.metric("Available Cash",fmt(available_cash))
-    c2.metric("Pending Withdrawals",fmt(pending_wd),delta_color="inverse")
-    c3.metric("Liabilities",fmt(bonus_liability+commission_liability),delta_color="inverse")
-    c4.metric("Net Liquidity",fmt(net_liquidity),f"Buffer: {buffer_pct:.1f}%")
+    c1.metric("Available",fmt(available_cash)); c2.metric("Pending WD",fmt(pending_wd),delta_color="inverse")
+    c3.metric("Liabilities",fmt(bonus_liability+commission_liability),delta_color="inverse"); c4.metric("Net Liquidity",fmt(net_liquidity),f"Buffer: {buffer_pct:.1f}%")
 
-    # Liquidity Charts
-    liq1,liq2,liq3 = st.columns(3)
-    with liq1:
-        bank_by_ccy = df_bank.groupby("CCY")["Balance"].sum().reset_index()
-        fig_bc = px.pie(bank_by_ccy,values="Balance",names="CCY",hole=0.55,color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
-        fig_bc.update_layout(**PL,height=220); fig_bc.update_traces(textinfo="value+percent")
-        st.caption("Bank by Currency"); st.plotly_chart(fig_bc,use_container_width=True)
-    with liq2:
-        psp_comp = df_psp.groupby("PSP").agg(Balance=("Balance","sum"),Pending=("Pending_Out","sum")).reset_index()
-        fig_pc = go.Figure()
-        fig_pc.add_trace(go.Bar(x=psp_comp["PSP"],y=psp_comp["Balance"],name="Balance",marker_color="#10b981"))
-        fig_pc.add_trace(go.Bar(x=psp_comp["PSP"],y=psp_comp["Pending"],name="Pending Out",marker_color="#ef4444"))
-        fig_pc.update_layout(**PL,height=220,barmode="group")
-        st.caption("PSP Balance vs Pending"); st.plotly_chart(fig_pc,use_container_width=True)
-    with liq3:
-        fig_gauge = go.Figure(go.Indicator(mode="gauge+number",value=buffer_pct,title={"text":"Buffer %"},gauge={"axis":{"range":[0,30]},"bar":{"color":"#ef4444" if buffer_pct<15 else "#10b981"},"steps":[{"range":[0,15],"color":"rgba(239,68,68,.15)"},{"range":[15,30],"color":"rgba(16,185,129,.15)"}],"threshold":{"line":{"color":"#f59e0b","width":3},"thickness":0.8,"value":15}}))
-        fig_gauge.update_layout(**PL,height=220)
-        st.caption("Liquidity Buffer Gauge"); st.plotly_chart(fig_gauge,use_container_width=True)
+    lq1,lq2,lq3=st.columns(3)
+    with lq1:
+        bc=df_bank.groupby("CCY")["Balance"].sum().reset_index()
+        fig=px.pie(bc,values="Balance",names="CCY",hole=0.55,color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig.update_layout(**PL,height=200); fig.update_traces(textinfo="value+percent"); st.caption("Bank by CCY"); st.plotly_chart(fig,use_container_width=True)
+    with lq2:
+        pc=df_psp.groupby("PSP").agg(Bal=("Balance","sum"),Pend=("Pending_Out","sum")).reset_index()
+        fig2=go.Figure(); fig2.add_trace(go.Bar(x=pc["PSP"],y=pc["Bal"],name="Balance",marker_color="#10b981")); fig2.add_trace(go.Bar(x=pc["PSP"],y=pc["Pend"],name="Pending",marker_color="#ef4444"))
+        fig2.update_layout(**PL,height=200,barmode="group"); st.caption("PSP Balance vs Pending"); st.plotly_chart(fig2,use_container_width=True)
+    with lq3:
+        fig_g=go.Figure(go.Indicator(mode="gauge+number",value=buffer_pct,title={"text":"Buffer %"},gauge={"axis":{"range":[0,30]},"bar":{"color":"#ef4444" if buffer_pct<15 else "#10b981"},"steps":[{"range":[0,15],"color":"rgba(239,68,68,.1)"},{"range":[15,30],"color":"rgba(16,185,129,.1)"}],"threshold":{"line":{"color":"#f59e0b","width":3},"thickness":0.8,"value":15}}))
+        fig_g.update_layout(**PL,height=200); st.caption("Buffer Gauge"); st.plotly_chart(fig_g,use_container_width=True)
 
-    # Cash flow waterfall
-    waterfall_items = ["Bank Balances","PSP Balances","Pending Out","Bonus","Commissions","Net Liquidity"]
-    waterfall_vals = [total_bank,total_psp,-pending_wd,-bonus_liability,-commission_liability,net_liquidity]
-    fig_wf = go.Figure(go.Waterfall(x=waterfall_items,y=waterfall_vals,measure=["relative","relative","relative","relative","relative","total"],connector={"line":{"color":"#334155"}},increasing={"marker":{"color":"#10b981"}},decreasing={"marker":{"color":"#ef4444"}},totals={"marker":{"color":"#6366f1"}}))
-    fig_wf.update_layout(**PL,height=280,title="Liquidity Waterfall")
-    st.plotly_chart(fig_wf,use_container_width=True)
+    # Waterfall
+    wf_items=["Banks","PSP","Pending Out","Bonus","Commission","Net"]
+    wf_vals=[total_bank,total_psp,-pending_wd,-bonus_liability,-commission_liability,net_liquidity]
+    fig_wf=go.Figure(go.Waterfall(x=wf_items,y=wf_vals,measure=["relative","relative","relative","relative","relative","total"],increasing={"marker":{"color":"#10b981"}},decreasing={"marker":{"color":"#ef4444"}},totals={"marker":{"color":"#6366f1"}},connector={"line":{"color":"#334155"}}))
+    fig_wf.update_layout(**PL,height=260,title="Liquidity Waterfall"); st.plotly_chart(fig_wf,use_container_width=True)
 
     cl,cr=st.columns(2)
-    with cl:
-        st.subheader("🏦 Bank Balances")
-        st.dataframe(df_bank,use_container_width=True,hide_index=True,column_config={"Balance":st.column_config.NumberColumn(format="$%d")})
-    with cr:
-        st.subheader("💳 PSP Balances")
-        st.dataframe(df_psp,use_container_width=True,hide_index=True,column_config={"Balance":st.column_config.NumberColumn(format="$%d"),"Pending_In":st.column_config.NumberColumn(format="$%d"),"Pending_Out":st.column_config.NumberColumn(format="$%d")})
-
-    st.subheader("Liabilities")
-    li1,li2=st.columns(2)
-    li1.metric("🎁 Bonus Exposure",fmt(bonus_liability))
-    li2.metric("🤝 Commission Liabilities",fmt(commission_liability))
-
-    st.subheader("Liquidity Calculation")
-    calc=pd.DataFrame({"Item":["Bank Balances","PSP Balances","Pending Outflows","Bonus Liability","Commission Liability","Net Liquidity"],"Amount":[total_bank,total_psp,-pending_wd,-bonus_liability,-commission_liability,net_liquidity]})
-    fig=px.bar(calc,y="Item",x="Amount",orientation="h",color=calc["Amount"].apply(lambda x:"Positive" if x>=0 else "Negative"),color_discrete_map={"Positive":"#10b981","Negative":"#ef4444"})
-    fig.update_layout(**PL,height=280,showlegend=False)
-    st.plotly_chart(fig,use_container_width=True)
+    with cl: st.subheader("🏦 Banks"); st.dataframe(df_bank,use_container_width=True,hide_index=True); export_df(df_bank,"Bank_Balances","exp_bank")
+    with cr: st.subheader("💳 PSPs"); st.dataframe(df_psp[["PSP","CCY","Balance","Pending_In","Pending_Out"]],use_container_width=True,hide_index=True); export_df(df_psp,"PSP_Balances","exp_psp")
 
 
-# ══════════════════════════════════════════════
-# 7. ALERTS & EXCEPTIONS
-# ══════════════════════════════════════════════
+# ──────────── PSP SCORECARD ────────────
+elif page == "📡 PSP Scorecard":
+    st.title("📡 PSP Performance Scorecard")
+    psp_summary = df_psp.groupby("PSP").agg(Total_Balance=("Balance","sum"),Total_Pending=("Pending_Out","sum"),Avg_Success=("Success_Rate","mean"),Avg_Settlement=("Avg_Settlement","first"),Avg_Cost=("Cost_Per_Txn","mean")).reset_index()
+    psp_txns = df_txn[df_txn["Counterparty"].isin(df_psp["PSP"].unique())].groupby("Counterparty").size().reset_index(name="Txn_Count")
+    psp_summary = psp_summary.merge(psp_txns, left_on="PSP", right_on="Counterparty", how="left").drop("Counterparty",axis=1).fillna(0)
+
+    for _,psp in psp_summary.iterrows():
+        st.subheader(f"💳 {psp['PSP']}")
+        p1,p2,p3,p4,p5=st.columns(5)
+        p1.metric("Balance",fmt_usd(psp["Total_Balance"]))
+        p2.metric("Pending Out",fmt_usd(psp["Total_Pending"]))
+        p3.metric("Success Rate",f"{psp['Avg_Success']:.1f}%")
+        p4.metric("Avg Settlement",psp["Avg_Settlement"])
+        p5.metric("Cost/Txn",f"${psp['Avg_Cost']:.2f}")
+
+    # Comparison charts
+    st.subheader("PSP Comparison")
+    pc1,pc2=st.columns(2)
+    with pc1:
+        fig=px.bar(psp_summary,x="PSP",y="Avg_Success",color="PSP",color_discrete_sequence=["#10b981","#6366f1","#f59e0b"])
+        fig.update_layout(**PL,height=240,showlegend=False,title="Success Rate %"); st.plotly_chart(fig,use_container_width=True)
+    with pc2:
+        fig2=px.bar(psp_summary,x="PSP",y="Avg_Cost",color="PSP",color_discrete_sequence=["#ef4444","#f59e0b","#10b981"])
+        fig2.update_layout(**PL,height=240,showlegend=False,title="Cost per Transaction $"); st.plotly_chart(fig2,use_container_width=True)
+
+
+# ──────────── ALERTS ────────────
 elif "Alerts" in page:
     st.title("⚠️ Alerts & Exceptions")
-    st.caption("Financial · Operational · Compliance — Case Management")
-
     c1,c2,c3,c4=st.columns(4)
     c1.metric("🔴 Critical",len(df_alerts[(df_alerts["Severity"]=="Critical")&(df_alerts["Status"]!="Resolved")]))
     c2.metric("🟡 Open",len(df_alerts[df_alerts["Status"]=="Open"]))
     c3.metric("🔵 Investigating",len(df_alerts[df_alerts["Status"]=="Investigating"]))
     c4.metric("🟢 Resolved",len(df_alerts[df_alerts["Status"]=="Resolved"]))
 
-    # Alert Charts
-    ac1,ac2,ac3 = st.columns(3)
+    # Charts
+    ac1,ac2=st.columns(2)
     with ac1:
-        sev_cnt = df_alerts["Severity"].value_counts().reset_index(); sev_cnt.columns=["Severity","Count"]
-        fig_sev = px.pie(sev_cnt,values="Count",names="Severity",hole=0.55,color_discrete_map={"Critical":"#ef4444","High":"#f59e0b","Medium":"#f59e0b","Low":"#3b82f6"})
-        fig_sev.update_layout(**PL,height=200); fig_sev.update_traces(textinfo="value+percent")
-        st.caption("By Severity"); st.plotly_chart(fig_sev,use_container_width=True)
+        sv=df_alerts["Severity"].value_counts().reset_index(); sv.columns=["Severity","Count"]
+        fig=px.pie(sv,values="Count",names="Severity",hole=0.55,color_discrete_map={"Critical":"#ef4444","High":"#f59e0b","Medium":"#f59e0b","Low":"#3b82f6"})
+        fig.update_layout(**PL,height=200); fig.update_traces(textinfo="value+percent"); st.plotly_chart(fig,use_container_width=True)
     with ac2:
-        cat_cnt = df_alerts["Category"].value_counts().reset_index(); cat_cnt.columns=["Category","Count"]
-        fig_cat = px.bar(cat_cnt,x="Category",y="Count",color="Category",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
-        fig_cat.update_layout(**PL,height=200,showlegend=False)
-        st.caption("By Category"); st.plotly_chart(fig_cat,use_container_width=True)
-    with ac3:
-        stat_cnt = df_alerts["Status"].value_counts().reset_index(); stat_cnt.columns=["Status","Count"]
-        fig_stat = px.pie(stat_cnt,values="Count",names="Status",hole=0.55,color_discrete_map={"Open":"#f59e0b","Investigating":"#3b82f6","Resolved":"#10b981"})
-        fig_stat.update_layout(**PL,height=200); fig_stat.update_traces(textinfo="value+percent")
-        st.caption("By Status"); st.plotly_chart(fig_stat,use_container_width=True)
+        cc=df_alerts["Category"].value_counts().reset_index(); cc.columns=["Category","Count"]
+        fig2=px.bar(cc,x="Category",y="Count",color="Category",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig2.update_layout(**PL,height=200,showlegend=False); st.plotly_chart(fig2,use_container_width=True)
 
     tab_all,tab_fin,tab_ops,tab_comp=st.tabs(["All","Financial","Operational","Compliance"])
-
-    sev_f=st.selectbox("Severity",["All","Critical","High","Medium","Low"])
-    stat_f=st.selectbox("Status",["All","Open","Investigating","Resolved"],key="as")
-
-    def show_alerts(data):
+    svf=st.selectbox("Severity",["All","Critical","High","Medium","Low"]); stf=st.selectbox("Status",["All","Open","Investigating","Resolved"],key="as2")
+    def show_al(data):
         d=data.copy()
-        if sev_f!="All":d=d[d["Severity"]==sev_f]
-        if stat_f!="All":d=d[d["Status"]==stat_f]
+        if svf!="All": d=d[d["Severity"]==svf]
+        if stf!="All": d=d[d["Status"]==stf]
         if len(d)==0: st.success("No alerts"); return
-        st.dataframe(d[["ID","Title","Category","Severity","Status","SLA","Created"]],use_container_width=True,hide_index=True)
         for _,al in d.iterrows():
             st.markdown(f'<div class="alert-card"><div class="alert-title">{sev_icon(al["Severity"])} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Category"],"blue")} {badge(al["Status"],"yellow" if al["Status"]!="Resolved" else "green")}</div></div>',unsafe_allow_html=True)
+    with tab_all: show_al(df_alerts)
+    with tab_fin: show_al(df_alerts[df_alerts["Category"]=="Financial"])
+    with tab_ops: show_al(df_alerts[df_alerts["Category"]=="Operational"])
+    with tab_comp: show_al(df_alerts[df_alerts["Category"]=="Compliance"])
 
-    with tab_all: show_alerts(df_alerts)
-    with tab_fin: show_alerts(df_alerts[df_alerts["Category"]=="Financial"])
-    with tab_ops: show_alerts(df_alerts[df_alerts["Category"]=="Operational"])
-    with tab_comp: show_alerts(df_alerts[df_alerts["Category"]=="Compliance"])
-
-    st.markdown("---")
-    st.subheader("Case Management")
+    st.subheader("Case Management & Comments")
     active=df_alerts[df_alerts["Status"].isin(["Open","Investigating"])]
     if len(active)>0:
         sel=st.selectbox("Select alert",active["ID"].tolist())
         al=df_alerts[df_alerts["ID"]==sel].iloc[0]
         st.info(f"**{al['Title']}** — {al['Description']}")
-        st.markdown(f"**Linked:** {al['Linked']} | **SLA:** {al['SLA']}")
         bc1,bc2,bc3,bc4=st.columns(4)
-        bc1.button("📋 Open Case",use_container_width=True,key="oc")
-        bc2.button("🔍 Investigate",use_container_width=True,key="inv2")
-        bc3.button("✅ Resolve",use_container_width=True,key="res")
-        bc4.button("❌ Dismiss",use_container_width=True,key="dis")
+        if bc1.button("📋 Open",use_container_width=True,key="oc2"): add_audit("Current User",f"Opened case {sel}","Alerts")
+        if bc2.button("🔍 Investigate",use_container_width=True,key="inv3"): add_audit("Current User",f"Investigating {sel}","Alerts")
+        if bc3.button("✅ Resolve",use_container_width=True,key="res2"): add_audit("Current User",f"Resolved {sel}","Alerts")
+        bc4.button("❌ Dismiss",use_container_width=True,key="dis2")
+        show_comments(sel)
 
 
-# ══════════════════════════════════════════════
-# 8. REPORTS & ANALYTICS
-# ══════════════════════════════════════════════
-elif page == "📈 Reports & Analytics":
+# ──────────── REPORTS ────────────
+elif page == "📈 Reports":
     st.title("📈 Reports & Analytics")
-    st.caption("Daily · Weekly · Monthly reports + Profitability Analysis + KPIs")
-
-    tab_daily,tab_weekly,tab_monthly,tab_profit,tab_kpis=st.tabs(["Daily Report","Weekly Report","Monthly Report","Profitability","KPIs"])
+    tab_daily,tab_profit,tab_kpis=st.tabs(["Daily/Weekly/Monthly","Profitability","KPIs"])
 
     with tab_daily:
-        st.subheader("📅 Daily Finance Report — May 18, 2026")
-        d1,d2,d3,d4=st.columns(4)
-        d1.metric("Opening Balance",fmt(opening_balance))
-        d2.metric("Cash In",fmt(cash_in))
-        d3.metric("Cash Out",fmt(cash_out))
-        d4.metric("Net Flow",fmt(net_flow))
-        fig=go.Figure()
-        fig.add_trace(go.Bar(x=["Cash In","Cash Out","Net Flow"],y=[cash_in,cash_out,net_flow],marker_color=["#10b981","#ef4444","#6366f1"]))
-        fig.update_layout(**PL,height=260)
-        st.plotly_chart(fig,use_container_width=True)
-
-    with tab_weekly:
-        st.subheader("📋 Weekly Control Report — May 12–18, 2026")
-        w1,w2,w3=st.columns(3)
-        w1.metric("Recon Rate",f"{recon_rate:.1f}%")
-        w2.metric("Exceptions",len(df_rec[df_rec["Status"]=="Exception"]))
-        w3.metric("PSP Performance",f"{len(df_psp)} active")
-        fig_w=go.Figure()
-        fig_w.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Net"],mode="lines+markers",line=dict(color="#6366f1",width=2.5)))
-        fig_w.update_layout(**PL,height=240)
-        st.plotly_chart(fig_w,use_container_width=True)
-
-    with tab_monthly:
-        st.subheader("📊 Monthly Financial Report — May 2026")
-        total_rev=df_profit["Revenue"].sum();total_cost=df_profit["Costs"].sum();total_prof=df_profit["Profit"].sum()
-        m1,m2,m3=st.columns(3)
-        m1.metric("Revenue",fmt(total_rev))
-        m2.metric("Costs",fmt(total_cost))
-        m3.metric("Profit",fmt(total_prof),f"Margin: {total_prof/total_rev*100:.1f}%")
-
-        # Monthly charts
-        mr1,mr2 = st.columns(2)
-        with mr1:
-            fig_rev = go.Figure()
-            fig_rev.add_trace(go.Bar(x=df_kpi["Month"],y=df_kpi["Net_Flow"],name="Net Flow",marker_color="#10b981"))
-            fig_rev.add_trace(go.Bar(x=df_kpi["Month"],y=df_kpi["Op_Costs"],name="Op Costs",marker_color="#ef4444"))
-            fig_rev.update_layout(**PL,height=260,barmode="group",title="Revenue vs Costs Trend")
-            st.plotly_chart(fig_rev,use_container_width=True)
-        with mr2:
-            margin_data = df_kpi.copy()
-            margin_data["Margin"] = ((margin_data["Net_Flow"] - margin_data["Op_Costs"]) / margin_data["Net_Flow"] * 100)
-            fig_margin = px.line(margin_data,x="Month",y="Margin",markers=True,color_discrete_sequence=["#8b5cf6"])
-            fig_margin.update_layout(**PL,height=260,title="Profit Margin Trend (%)")
-            st.plotly_chart(fig_margin,use_container_width=True)
-
-        # Profitability treemap
-        fig_tree = px.treemap(df_profit,path=["Client"],values="Profit",color="Profit",color_continuous_scale=["#ef4444","#f59e0b","#10b981"])
-        fig_tree.update_layout(**PL,height=280,title="Client Profitability Map")
-        st.plotly_chart(fig_tree,use_container_width=True)
+        rpt=st.radio("Report",["Daily","Weekly","Monthly"],horizontal=True)
+        if rpt=="Daily":
+            d1,d2,d3,d4=st.columns(4); d1.metric("Opening",fmt(opening_balance)); d2.metric("Cash In",fmt(cash_in)); d3.metric("Cash Out",fmt(cash_out)); d4.metric("Net Flow",fmt(net_flow))
+            fig=go.Figure(); fig.add_trace(go.Bar(x=["Cash In","Cash Out","Net"],y=[cash_in,cash_out,net_flow],marker_color=["#10b981","#ef4444","#6366f1"]))
+            fig.update_layout(**PL,height=240); st.plotly_chart(fig,use_container_width=True)
+        elif rpt=="Weekly":
+            w1,w2,w3=st.columns(3); w1.metric("Recon Rate",f"{recon_rate:.1f}%"); w2.metric("Exceptions",len(df_rec[df_rec["Status"]=="Exception"])); w3.metric("Total Volume",fmt(df_cash["Net"].sum()))
+            fig=go.Figure(); fig.add_trace(go.Scatter(x=df_cash["Date"],y=df_cash["Net"],mode="lines+markers",line=dict(color="#6366f1",width=2.5)))
+            fig.update_layout(**PL,height=240); st.plotly_chart(fig,use_container_width=True)
+        else:
+            tr=df_profit["Revenue"].sum(); tc=df_profit["Costs"].sum(); tp=df_profit["Profit"].sum()
+            m1,m2,m3=st.columns(3); m1.metric("Revenue",fmt(tr)); m2.metric("Costs",fmt(tc)); m3.metric("Profit",fmt(tp))
+            fig_tree=px.treemap(df_profit,path=["Client"],values="Profit",color="Profit",color_continuous_scale=["#ef4444","#f59e0b","#10b981"])
+            fig_tree.update_layout(**PL,height=300,title="Profitability Map"); st.plotly_chart(fig_tree,use_container_width=True)
 
     with tab_profit:
-        st.subheader("💰 Profitability Analysis")
-        pt1,pt2,pt3=st.tabs(["Client Profitability","IB Profitability","Campaign Profitability"])
+        pt1,pt2,pt3=st.tabs(["Client","IB Partners","Campaigns"])
         with pt1:
             cl,cr=st.columns(2)
             with cl:
-                fig=go.Figure()
-                fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Revenue"],name="Revenue",marker_color="#10b981"))
-                fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Costs"],name="Costs",marker_color="#ef4444"))
-                fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Profit"],name="Profit",marker_color="#6366f1"))
-                fig.update_layout(**PL,height=300,barmode="group")
-                st.plotly_chart(fig,use_container_width=True)
+                fig=go.Figure(); fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Revenue"],name="Revenue",marker_color="#10b981")); fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Costs"],name="Costs",marker_color="#ef4444")); fig.add_trace(go.Bar(x=df_profit["Client"],y=df_profit["Profit"],name="Profit",marker_color="#6366f1"))
+                fig.update_layout(**PL,height=300,barmode="group"); st.plotly_chart(fig,use_container_width=True)
             with cr:
-                df_p=df_profit.copy();df_p["Margin"]=(df_p["Profit"]/df_p["Revenue"]*100).round(1).astype(str)+"%"
-                st.dataframe(df_p.sort_values("Profit",ascending=False),use_container_width=True,hide_index=True,column_config={"Revenue":st.column_config.NumberColumn(format="$%d"),"Costs":st.column_config.NumberColumn(format="$%d"),"Profit":st.column_config.NumberColumn(format="$%d")})
+                dp=df_profit.copy(); dp["Margin"]=(dp["Profit"]/dp["Revenue"]*100).round(1).astype(str)+"%"
+                st.dataframe(dp.sort_values("Profit",ascending=False)[["Client","Revenue","Costs","Profit","Margin"]],use_container_width=True,hide_index=True); export_df(dp,"Client_Profitability","exp_cp")
         with pt2:
             cl2,cr2=st.columns(2)
             with cl2:
-                fig_ib=go.Figure()
-                fig_ib.add_trace(go.Bar(x=df_ib["Partner"],y=df_ib["Net_Revenue"],name="Net Revenue",marker_color="#10b981"))
-                fig_ib.add_trace(go.Bar(x=df_ib["Partner"],y=df_ib["Commission"],name="Commission",marker_color="#8b5cf6"))
-                fig_ib.update_layout(**PL,height=300,barmode="group")
-                st.plotly_chart(fig_ib,use_container_width=True)
-            with cr2:
-                st.dataframe(df_ib.sort_values("Net_Revenue",ascending=False),use_container_width=True,hide_index=True,column_config={"Volume":st.column_config.NumberColumn(format="$%d"),"Commission":st.column_config.NumberColumn(format="$%d"),"Net_Revenue":st.column_config.NumberColumn(format="$%d")})
+                fig=go.Figure(); fig.add_trace(go.Bar(x=df_ib["Partner"],y=df_ib["Net_Revenue"],name="Net Rev",marker_color="#10b981")); fig.add_trace(go.Bar(x=df_ib["Partner"],y=df_ib["Commission"],name="Commission",marker_color="#8b5cf6"))
+                fig.update_layout(**PL,height=300,barmode="group"); st.plotly_chart(fig,use_container_width=True)
+            with cr2: st.dataframe(df_ib.sort_values("Net_Revenue",ascending=False),use_container_width=True,hide_index=True); export_df(df_ib,"IB_Profitability","exp_ib")
         with pt3:
-            campaigns=pd.DataFrame([{"Campaign":"Welcome Bonus","Spend":45000,"Revenue":180000,"ROI":300},{"Campaign":"Loyalty Program","Spend":22000,"Revenue":95000,"ROI":332},{"Campaign":"Referral Bonus","Spend":15000,"Revenue":72000,"ROI":380},{"Campaign":"VIP Cashback","Spend":35000,"Revenue":110000,"ROI":214}])
+            camps=pd.DataFrame([{"Campaign":"Welcome Bonus","Spend":45000,"Revenue":180000,"ROI":300},{"Campaign":"Loyalty","Spend":22000,"Revenue":95000,"ROI":332},{"Campaign":"Referral","Spend":15000,"Revenue":72000,"ROI":380},{"Campaign":"VIP Cashback","Spend":35000,"Revenue":110000,"ROI":214}])
             cl3,cr3=st.columns(2)
             with cl3:
-                fig_c=go.Figure()
-                fig_c.add_trace(go.Bar(x=campaigns["Campaign"],y=campaigns["Spend"],name="Spend",marker_color="#ef4444"))
-                fig_c.add_trace(go.Bar(x=campaigns["Campaign"],y=campaigns["Revenue"],name="Revenue",marker_color="#10b981"))
-                fig_c.update_layout(**PL,height=300,barmode="group")
-                st.plotly_chart(fig_c,use_container_width=True)
-            with cr3:
-                st.dataframe(campaigns.sort_values("ROI",ascending=False),use_container_width=True,hide_index=True,column_config={"Spend":st.column_config.NumberColumn(format="$%d"),"Revenue":st.column_config.NumberColumn(format="$%d"),"ROI":st.column_config.ProgressColumn(min_value=0,max_value=400,format="%d%%")})
+                fig=go.Figure(); fig.add_trace(go.Bar(x=camps["Campaign"],y=camps["Spend"],name="Spend",marker_color="#ef4444")); fig.add_trace(go.Bar(x=camps["Campaign"],y=camps["Revenue"],name="Revenue",marker_color="#10b981"))
+                fig.update_layout(**PL,height=300,barmode="group"); st.plotly_chart(fig,use_container_width=True)
+            with cr3: st.dataframe(camps,use_container_width=True,hide_index=True)
 
     with tab_kpis:
-        st.subheader("📈 Financial KPIs")
-        cl,cr=st.columns(2)
-        with cl:
-            fig_nf=px.line(df_kpi,x="Month",y="Net_Flow",markers=True,color_discrete_sequence=["#6366f1"])
-            fig_nf.update_layout(**PL,height=260,title="Net Flow Trend")
-            st.plotly_chart(fig_nf,use_container_width=True)
-        with cr:
-            fig_rr=px.line(df_kpi,x="Month",y="Recon_Rate",markers=True,color_discrete_sequence=["#10b981"])
-            fig_rr.add_hline(y=95,line_dash="dash",line_color="#f59e0b",annotation_text="95% Target")
-            fig_rr.update_layout(**PL,height=260,title="Reconciliation Rate")
-            st.plotly_chart(fig_rr,use_container_width=True)
-        cl2,cr2=st.columns(2)
-        with cl2:
-            fig_oc=px.bar(df_kpi,x="Month",y="Op_Costs",color_discrete_sequence=["#ef4444"])
-            fig_oc.update_layout(**PL,height=260,showlegend=False,title="Operating Costs")
-            st.plotly_chart(fig_oc,use_container_width=True)
-        with cr2:
-            fig_ex=px.line(df_kpi,x="Month",y="Exceptions",markers=True,color_discrete_sequence=["#f59e0b"])
-            fig_ex.update_layout(**PL,height=260,title="Exception Trends")
-            st.plotly_chart(fig_ex,use_container_width=True)
+        kc1,kc2=st.columns(2)
+        with kc1: fig=px.line(df_kpi,x="Month",y="Net_Flow",markers=True,color_discrete_sequence=["#6366f1"]); fig.update_layout(**PL,height=240,title="Net Flow"); st.plotly_chart(fig,use_container_width=True)
+        with kc2: fig2=px.line(df_kpi,x="Month",y="Recon_Rate",markers=True,color_discrete_sequence=["#10b981"]); fig2.add_hline(y=95,line_dash="dash",line_color="#f59e0b"); fig2.update_layout(**PL,height=240,title="Recon Rate"); st.plotly_chart(fig2,use_container_width=True)
+        kc3,kc4=st.columns(2)
+        with kc3: fig3=px.bar(df_kpi,x="Month",y="Op_Costs",color_discrete_sequence=["#ef4444"]); fig3.update_layout(**PL,height=240,showlegend=False,title="Op Costs"); st.plotly_chart(fig3,use_container_width=True)
+        with kc4: fig4=px.line(df_kpi,x="Month",y="Exceptions",markers=True,color_discrete_sequence=["#f59e0b"]); fig4.update_layout(**PL,height=240,title="Exceptions"); st.plotly_chart(fig4,use_container_width=True)
+        st.dataframe(df_kpi,use_container_width=True,hide_index=True); export_df(df_kpi,"Monthly_KPIs","exp_kpi")
 
 
-# ══════════════════════════════════════════════
-# 9. RISK EARLY WARNING SYSTEM
-# ══════════════════════════════════════════════
+# ──────────── CASH FORECAST ────────────
+elif page == "🔮 Cash Forecast":
+    st.title("🔮 Cash Flow Forecast")
+    st.caption("7-day projection based on historical trend")
+    avg_dep = df_cash["Deposits"].mean(); avg_wd = df_cash["Withdrawals"].mean()
+    std_dep = df_cash["Deposits"].std(); std_wd = df_cash["Withdrawals"].std()
+
+    forecast_days = ["May 19","May 20","May 21","May 22","May 23","May 24","May 25"]
+    np.random.seed(42)
+    forecast = []
+    for d in forecast_days:
+        dep = avg_dep + np.random.normal(0, std_dep*0.3)
+        wd = avg_wd + np.random.normal(0, std_wd*0.3)
+        forecast.append({"Date":d,"Deposits":dep,"Withdrawals":wd,"Net":dep-wd,"Type":"Forecast"})
+
+    hist = [dict(row, Type="Actual") for row in cash_flow_this]
+    combined = pd.DataFrame(hist + forecast)
+
+    fig = go.Figure()
+    actual = combined[combined["Type"]=="Actual"]
+    fcast = combined[combined["Type"]=="Forecast"]
+    fig.add_trace(go.Scatter(x=actual["Date"],y=actual["Net"],mode="lines+markers",name="Actual",line=dict(color="#6366f1",width=2.5)))
+    fig.add_trace(go.Scatter(x=fcast["Date"],y=fcast["Net"],mode="lines+markers",name="Forecast",line=dict(color="#6366f1",width=2,dash="dot")))
+    fig.add_trace(go.Scatter(x=fcast["Date"],y=fcast["Net"]*1.15,mode="lines",name="Upper Band",line=dict(color="#10b981",width=1,dash="dot"),showlegend=False))
+    fig.add_trace(go.Scatter(x=fcast["Date"],y=fcast["Net"]*0.85,mode="lines",name="Lower Band",line=dict(color="#ef4444",width=1,dash="dot"),fill="tonexty",fillcolor="rgba(99,102,241,.08)",showlegend=False))
+    fig.update_layout(**PL,height=350,title="Net Flow — Actual + 7-Day Forecast")
+    st.plotly_chart(fig,use_container_width=True)
+
+    fc1,fc2,fc3 = st.columns(3)
+    fc1.metric("Avg Daily Deposit (forecast)", fmt_usd(avg_dep))
+    fc2.metric("Avg Daily Withdrawal (forecast)", fmt_usd(avg_wd))
+    fc3.metric("Projected Net (7-day)", fmt_usd(sum([f["Net"] for f in forecast])))
+
+    st.subheader("Forecast Detail")
+    st.dataframe(pd.DataFrame(forecast)[["Date","Deposits","Withdrawals","Net"]],use_container_width=True,hide_index=True,column_config={"Deposits":st.column_config.NumberColumn(format="$%.0f"),"Withdrawals":st.column_config.NumberColumn(format="$%.0f"),"Net":st.column_config.NumberColumn(format="$%.0f")})
+
+
+# ──────────── RISK MONITOR ────────────
 elif page == "🛡️ Risk Monitor":
     st.title("🛡️ Risk Early Warning System")
-    st.caption("Proactive risk detection — Liquidity · Settlement · Operational · Concentration")
-
-    # Risk indicators
-    liq_risk = "Red" if buffer_pct < 15 else "Yellow" if buffer_pct < 20 else "Green"
-    settle_risk = "Yellow" if len(df_alerts[df_alerts["Title"].str.contains("Delay|Settlement",case=False)&(df_alerts["Status"]!="Resolved")]) > 0 else "Green"
-    ops_risk = "Red" if unmatched > 3 else "Yellow" if unmatched > 1 else "Green"
-    psp_volumes = df_txn.groupby("Counterparty").size()
-    max_psp_pct = (psp_volumes.max() / psp_volumes.sum() * 100) if len(psp_volumes) > 0 else 0
-    conc_risk = "Red" if max_psp_pct > 50 else "Yellow" if max_psp_pct > 35 else "Green"
-
-    st.subheader("Risk Dashboard")
-    risks = [
-        ("Liquidity Risk", liq_risk, f"Buffer: {buffer_pct:.1f}%", "Cash position vs obligations"),
-        ("Settlement Risk", settle_risk, f"{len(df_alerts[df_alerts['Title'].str.contains('Delay',case=False)])} delays", "PSP settlement timing"),
-        ("Operational Risk", ops_risk, f"{unmatched} unmatched", "Reconciliation exceptions"),
-        ("Concentration Risk", conc_risk, f"Top PSP: {max_psp_pct:.0f}%", "Dependency on single PSP/IB"),
-    ]
+    liq_risk="Red" if buffer_pct<15 else "Yellow" if buffer_pct<20 else "Green"
+    settle_risk="Yellow" if len(df_alerts[df_alerts["Title"].str.contains("Delay",case=False)&(df_alerts["Status"]!="Resolved")])>0 else "Green"
+    ops_risk="Red" if unmatched>3 else "Yellow" if unmatched>1 else "Green"
+    psp_v=df_txn.groupby("Counterparty").size(); max_psp=(psp_v.max()/psp_v.sum()*100) if len(psp_v)>0 else 0
+    conc_risk="Red" if max_psp>50 else "Yellow" if max_psp>35 else "Green"
 
     r1,r2,r3,r4=st.columns(4)
-    for col,(name,status,detail,desc) in zip([r1,r2,r3,r4],risks):
-        color=risk_color(status)
-        col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:32px;margin-bottom:4px">{"🟢" if status=="Green" else "🟡" if status=="Yellow" else "🔴"}</div><h4 style="font-size:13px">{name}</h4><div style="font-size:18px;font-weight:700;color:{color}">{status}</div><div class="sm">{detail}</div></div>',unsafe_allow_html=True)
+    for col,(name,status,detail) in zip([r1,r2,r3,r4],[("Liquidity",liq_risk,f"Buffer: {buffer_pct:.1f}%"),("Settlement",settle_risk,"PSP timing"),("Operational",ops_risk,f"{unmatched} unmatched"),("Concentration",conc_risk,f"Top: {max_psp:.0f}%")]):
+        emoji="🟢" if status=="Green" else "🟡" if status=="Yellow" else "🔴"
+        rcolor = {"Green":"#10b981","Yellow":"#f59e0b","Red":"#ef4444"}.get(status,"#94a3b8")
+        col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:28px">{emoji}</div><h4 style="font-size:12px">{name}</h4><div style="font-size:16px;font-weight:700;color:{rcolor}">{status}</div><div class="sm">{detail}</div></div>',unsafe_allow_html=True)
 
-    st.markdown("---")
-
-    # Detailed risk indicators
-    st.subheader("Liquidity Risk Indicators")
-    for label,val,threshold,status in [
-        ("Net Liquidity",fmt(net_liquidity),"Min: $500K","🟢" if net_liquidity>500000 else "🔴"),
-        ("Liquidity Buffer",f"{buffer_pct:.1f}%","Min: 15%","🟢" if buffer_pct>=15 else "🔴"),
-        ("Withdrawal Pressure",fmt(pending_wd),f"{pending_wd/available_cash*100:.1f}% of cash","🟢" if pending_wd/available_cash<0.1 else "🟡"),
-    ]:
-        st.markdown(f'<div class="risk-row"><span class="risk-label">{status} {label}</span><span class="risk-val">{val} <span class="sm">({threshold})</span></span></div>',unsafe_allow_html=True)
-
-    st.subheader("Operational Risk Indicators")
-    for label,val,threshold,status in [
-        ("Recon Exception Rate",f"{(1-recon_rate/100)*100:.1f}%","Max: 5%","🟢" if (1-recon_rate/100)*100<=5 else "🔴"),
-        ("PSP Delays",f"{len(df_alerts[df_alerts['Title'].str.contains('Delay',case=False)])} active","Max: 0","🟢" if len(df_alerts[df_alerts['Title'].str.contains('Delay',case=False)])==0 else "🟡"),
-        ("Failed Transactions",f"{len(df_txn[df_txn['Status']=='Failed'])}","Max: 0","🟢" if len(df_txn[df_txn['Status']=='Failed'])==0 else "🔴"),
-    ]:
-        st.markdown(f'<div class="risk-row"><span class="risk-label">{status} {label}</span><span class="risk-val">{val} <span class="sm">({threshold})</span></span></div>',unsafe_allow_html=True)
-
-    # Risk Radar Chart
-    st.subheader("Risk Radar")
-    risk_scores = {"Liquidity": 85 if liq_risk=="Green" else 50 if liq_risk=="Yellow" else 20,
-                   "Settlement": 80 if settle_risk=="Green" else 50 if settle_risk=="Yellow" else 20,
-                   "Operational": 80 if ops_risk=="Green" else 50 if ops_risk=="Yellow" else 20,
-                   "Concentration": 70 if conc_risk=="Green" else 45 if conc_risk=="Yellow" else 20,
-                   "Compliance": 60}
-    categories = list(risk_scores.keys())
-    values = list(risk_scores.values())
-    fig_radar = go.Figure()
-    fig_radar.add_trace(go.Scatterpolar(r=values+[values[0]],theta=categories+[categories[0]],fill="toself",fillcolor="rgba(99,102,241,.15)",line=dict(color="#6366f1",width=2),name="Current"))
-    fig_radar.add_trace(go.Scatterpolar(r=[80]*6,theta=categories+[categories[0]],line=dict(color="#10b981",width=1,dash="dash"),name="Target"))
-    fig_radar.update_layout(**PL,height=320,polar=dict(bgcolor="rgba(0,0,0,0)",radialaxis=dict(visible=True,range=[0,100],gridcolor="#1e2d4a"),angularaxis=dict(gridcolor="#1e2d4a")))
-    st.plotly_chart(fig_radar,use_container_width=True)
-
-    st.subheader("Concentration Risk")
-    cr1,cr2 = st.columns(2)
-    with cr1:
-        st.markdown("**PSP Volume Distribution**")
-        psp_vol=df_txn.groupby("Counterparty")["Amount"].sum().reset_index().sort_values("Amount",ascending=False)
-        fig_conc=px.pie(psp_vol,values="Amount",names="Counterparty",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
-        fig_conc.update_layout(**PL,height=260)
-        st.plotly_chart(fig_conc,use_container_width=True)
-    with cr2:
-        st.markdown("**Client Volume Distribution**")
-        client_vol=df_txn.groupby("Client")["Amount"].sum().nlargest(6).reset_index()
-        fig_cv=px.pie(client_vol,values="Amount",names="Client",hole=0.5,color_discrete_sequence=["#10b981","#6366f1","#f59e0b","#8b5cf6","#06b6d4","#ef4444"])
-        fig_cv.update_layout(**PL,height=260)
-        st.plotly_chart(fig_cv,use_container_width=True)
+    # Radar
+    scores={"Liquidity":85 if liq_risk=="Green" else 50 if liq_risk=="Yellow" else 20,"Settlement":80 if settle_risk=="Green" else 50,"Operational":80 if ops_risk=="Green" else 50 if ops_risk=="Yellow" else 20,"Concentration":70 if conc_risk=="Green" else 45 if conc_risk=="Yellow" else 20,"Compliance":60}
+    cats=list(scores.keys()); vals=list(scores.values())
+    fig=go.Figure(); fig.add_trace(go.Scatterpolar(r=vals+[vals[0]],theta=cats+[cats[0]],fill="toself",fillcolor="rgba(99,102,241,.15)",line=dict(color="#6366f1",width=2)))
+    fig.add_trace(go.Scatterpolar(r=[80]*6,theta=cats+[cats[0]],line=dict(color="#10b981",width=1,dash="dash"),name="Target"))
+    fig.update_layout(**PL,height=300,polar=dict(bgcolor="rgba(0,0,0,0)",radialaxis=dict(visible=True,range=[0,100])))
+    st.plotly_chart(fig,use_container_width=True)
 
     st.subheader("Scenario Analysis")
-    st.markdown("**What if withdrawals increase by:**")
-    increase=st.slider("Withdrawal increase %",0,200,50,10)
-    new_wd=pending_wd*(1+increase/100)
-    new_liq=available_cash-new_wd-bonus_liability-commission_liability
-    new_buf=new_liq/available_cash*100 if available_cash>0 else 0
+    inc=st.slider("Withdrawal increase %",0,200,50,10)
+    nwd=pending_wd*(1+inc/100); nliq=available_cash-nwd-bonus_liability-commission_liability; nbuf=nliq/available_cash*100
     sc1,sc2,sc3=st.columns(3)
-    sc1.metric("New Pending WD",fmt(new_wd),f"+{increase}%",delta_color="inverse")
-    sc2.metric("New Net Liquidity",fmt(new_liq))
-    sc3.metric("New Buffer",f"{new_buf:.1f}%","🔴 BREACH" if new_buf<15 else "✅ OK",delta_color="inverse" if new_buf<15 else "normal")
+    sc1.metric("New Pending",fmt_usd(nwd),f"+{inc}%",delta_color="inverse")
+    sc2.metric("New Net Liq",fmt_usd(nliq))
+    sc3.metric("New Buffer",f"{nbuf:.1f}%","🔴 BREACH" if nbuf<15 else "✅ OK",delta_color="inverse" if nbuf<15 else "normal")
 
 
-# ══════════════════════════════════════════════
-# 10. INTEGRATIONS
-# ══════════════════════════════════════════════
+# ──────────── AUDIT LOG ────────────
+elif page == "📋 Audit Log":
+    st.title("📋 Audit Log — SOX Compliance")
+    st.caption("Complete trail of all user and system actions")
+    df_audit = pd.DataFrame(st.session_state.audit_log)
+    sf=st.selectbox("Filter by Section",["All"]+sorted(df_audit["Section"].unique().tolist()))
+    uf=st.selectbox("Filter by User",["All"]+sorted(df_audit["User"].unique().tolist()))
+    view=df_audit.copy()
+    if sf!="All": view=view[view["Section"]==sf]
+    if uf!="All": view=view[view["User"]==uf]
+    st.dataframe(view,use_container_width=True,hide_index=True)
+    export_df(view,"Audit_Log","exp_audit")
+
+    st.subheader("Activity by User")
+    user_acts=df_audit["User"].value_counts().reset_index(); user_acts.columns=["User","Actions"]
+    fig=px.bar(user_acts,x="User",y="Actions",color_discrete_sequence=["#6366f1"])
+    fig.update_layout(**PL,height=220,showlegend=False); st.plotly_chart(fig,use_container_width=True)
+
+    st.subheader("Activity by Section")
+    sec_acts=df_audit["Section"].value_counts().reset_index(); sec_acts.columns=["Section","Actions"]
+    fig2=px.pie(sec_acts,values="Actions",names="Section",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
+    fig2.update_layout(**PL,height=220); st.plotly_chart(fig2,use_container_width=True)
+
+
+# ──────────── ARCHITECTURE ────────────
+elif page == "🏗️ Architecture":
+    st.title("🏗️ System Architecture")
+    layers=[("1️⃣ Connected Systems",["CRM","PSP Gateways","Bank Accounts","Trading Platform","Bonus Engine","Commission Engine"]),("2️⃣ Data Integration",["API Connectors","File Imports","Scheduled Pull","Validation"]),("3️⃣ Normalization",["Currency (ISO 4217)","Time (UTC)","ID Mapping","Type Mapping"]),("4️⃣ Reconciliation Engine",["ID Match","Amount Match","Time Window","Exception Detection"]),("5️⃣ Financial Ledger",["Client Funds","Company Cash","Fees","Commissions","Adjustments"])]
+    for title,items in layers:
+        st.subheader(title)
+        cols=st.columns(len(items) if len(items)<=4 else 3)
+        for i,item in enumerate(items):
+            cols[i%len(cols)].markdown(f'<div class="card" style="text-align:center;min-height:50px"><div class="sm" style="color:{TXT};font-weight:500">{item}</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="flow-arrow">▼</div>',unsafe_allow_html=True)
+    st.subheader("6️⃣ → Liquidity + Alerts → 7️⃣ Reports → 8️⃣ End Users")
+    uc=st.columns(5)
+    for col,(i,r) in zip(uc,[("👔","CFO"),("📊","Finance"),("⚙️","Ops"),("🔄","Recon"),("🏢","Mgmt")]):
+        col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:22px">{i}</div><h4 style="font-size:11px">{r}</h4></div>',unsafe_allow_html=True)
+
+
+# ──────────── INTEGRATIONS ────────────
 elif page == "🔌 Integrations":
     st.title("🔌 Integrations")
-    st.caption("Connected systems and data feeds")
-
-    integrations = [
-        {"System":"CRM","Protocol":"REST API","Status":"Connected","Last_Sync":"2 min ago","Records":"8,420","Health":"Online"},
-        {"System":"Stripe (PSP)","Protocol":"REST + Webhook","Status":"Connected","Last_Sync":"30 sec ago","Records":"12,105","Health":"Online"},
-        {"System":"Adyen (PSP)","Protocol":"REST API","Status":"Delayed","Last_Sync":"4h ago","Records":"5,890","Health":"Warning"},
-        {"System":"Worldpay (PSP)","Protocol":"REST API","Status":"Connected","Last_Sync":"5 min ago","Records":"3,200","Health":"Online"},
-        {"System":"JPMorgan (Bank)","Protocol":"SWIFT / SFTP","Status":"Connected","Last_Sync":"15 min ago","Records":"2,100","Health":"Online"},
-        {"System":"HSBC (Bank)","Protocol":"SWIFT / SFTP","Status":"Connected","Last_Sync":"15 min ago","Records":"980","Health":"Online"},
-        {"System":"Deutsche Bank","Protocol":"SWIFT / SFTP","Status":"Connected","Last_Sync":"15 min ago","Records":"1,450","Health":"Online"},
-        {"System":"Barclays (Bank)","Protocol":"SWIFT / SFTP","Status":"Connected","Last_Sync":"15 min ago","Records":"890","Health":"Online"},
-        {"System":"Trading Platform","Protocol":"WebSocket","Status":"Connected","Last_Sync":"Real-time","Records":"45,890","Health":"Online"},
-        {"System":"Bonus Engine","Protocol":"REST API","Status":"Connected","Last_Sync":"18 min ago","Records":"1,240","Health":"Online"},
-        {"System":"Commission Engine","Protocol":"REST API","Status":"Connected","Last_Sync":"10 min ago","Records":"892","Health":"Online"},
-    ]
-    df_int=pd.DataFrame(integrations)
-    st.dataframe(df_int,use_container_width=True,hide_index=True)
-
-    for intg in integrations:
-        dot="dot-g" if intg["Health"]=="Online" else "dot-y" if intg["Health"]=="Warning" else "dot-r"
-        st.markdown(f'<div class="risk-row"><span class="risk-label"><span class="status-dot {dot}"></span>{intg["System"]}</span><span class="sm">{intg["Protocol"]} · Last: {intg["Last_Sync"]} · {intg["Records"]} records</span></div>',unsafe_allow_html=True)
+    intg=[("CRM","REST API","Online","2 min"),("Stripe","REST+Webhook","Online","30s"),("Adyen","REST API","Warning","4h"),("Worldpay","REST API","Online","5 min"),("JPMorgan","SWIFT/SFTP","Online","15 min"),("HSBC","SWIFT/SFTP","Online","15 min"),("Deutsche Bank","SWIFT/SFTP","Online","15 min"),("Barclays","SWIFT/SFTP","Online","15 min"),("Trading Platform","WebSocket","Online","Real-time"),("Bonus Engine","REST API","Online","18 min"),("Commission Engine","REST API","Online","10 min")]
+    for name,proto,health,sync in intg:
+        dot="dot-g" if health=="Online" else "dot-y"
+        st.markdown(f'<div class="risk-row"><span class="risk-label"><span class="status-dot {dot}"></span>{name}</span><span class="sm">{proto} · {sync}</span></div>',unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════
-# 11. SETTINGS
-# ══════════════════════════════════════════════
+# ──────────── SETTINGS ────────────
 elif page == "⚙️ Settings":
     st.title("⚙️ Settings")
-    st.caption("System configuration and administration")
-
-    tab_gen,tab_users,tab_alerts_cfg,tab_recon_cfg=st.tabs(["General","Users & Roles","Alert Rules","Reconciliation"])
-
+    tab_gen,tab_users,tab_alerts_cfg,tab_recon_cfg=st.tabs(["General","Users","Alert Rules","Recon Rules"])
     with tab_gen:
-        st.subheader("General Settings")
-        st.text_input("Company Name",value="FinanceOps Corp")
-        st.selectbox("Base Currency",["USD","EUR","GBP"],index=0)
-        st.selectbox("Timezone",["UTC","EST","CET","GMT"],index=0)
-        st.number_input("Liquidity Buffer Threshold %",value=15.0,step=0.5)
-        st.button("💾 Save Settings",use_container_width=True)
-
+        st.text_input("Company",value="FinanceOps Corp"); st.selectbox("Base CCY",["USD","EUR","GBP"],key="set_ccy"); st.number_input("Buffer Threshold %",value=15.0,step=0.5)
+        st.button("💾 Save",use_container_width=True,key="save_gen")
     with tab_users:
-        st.subheader("Users & Roles")
-        users=pd.DataFrame([
-            {"User":"Ahmed K.","Role":"CFO","Access":"Full","Status":"Active"},
-            {"User":"Sarah M.","Role":"Finance Manager","Access":"Finance + Reports","Status":"Active"},
-            {"User":"Omar R.","Role":"Operations Manager","Access":"Transactions + Alerts","Status":"Active"},
-            {"User":"Lina T.","Role":"Recon Analyst","Access":"Reconciliation + Ledger","Status":"Active"},
-            {"User":"David P.","Role":"Compliance","Access":"Alerts + Reports","Status":"Active"},
-        ])
-        st.dataframe(users,use_container_width=True,hide_index=True)
-
+        st.dataframe(pd.DataFrame([{"User":"Ahmed K.","Role":"CFO","Access":"Full"},{"User":"Sarah M.","Role":"Finance Mgr","Access":"Finance+Reports"},{"User":"Omar R.","Role":"Ops Mgr","Access":"Txns+Alerts"},{"User":"Lina T.","Role":"Recon Analyst","Access":"Recon+Ledger"},{"User":"David P.","Role":"Compliance","Access":"Alerts+Reports"}]),use_container_width=True,hide_index=True)
     with tab_alerts_cfg:
-        st.subheader("Alert Rules")
-        st.number_input("Withdrawal Spike Threshold %",value=200,step=10)
-        st.number_input("Cash Imbalance Tolerance $",value=5000,step=500)
-        st.number_input("Recon Exception Rate Threshold %",value=5.0,step=0.5)
-        st.number_input("PSP Delay SLA (hours)",value=4,step=1)
-        st.button("💾 Save Alert Rules",use_container_width=True)
-
+        st.number_input("WD Spike %",value=200,step=10); st.number_input("Cash Imbalance $",value=5000,step=500); st.number_input("Recon Threshold %",value=5.0,step=0.5)
+        st.button("💾 Save",use_container_width=True,key="save_alert")
     with tab_recon_cfg:
-        st.subheader("Reconciliation Rules")
-        st.number_input("Amount Match Tolerance %",value=1.0,step=0.1)
-        st.number_input("Time Window (hours)",value=24,step=1)
-        st.checkbox("Auto-create cases for exceptions",value=True)
-        st.checkbox("Auto-match by ID + Amount",value=True)
-        st.checkbox("Enable FX tolerance matching",value=True)
-        st.button("💾 Save Recon Rules",use_container_width=True)
+        st.number_input("Amount Tolerance %",value=1.0,step=0.1); st.number_input("Time Window (h)",value=24,step=1)
+        st.checkbox("Auto-create cases",value=True); st.checkbox("Auto-match ID+Amount",value=True)
+        st.button("💾 Save",use_container_width=True,key="save_recon")
 
 
-# ══════════════════════════════════════════════
-# 12. FILE UPLOAD
-# ══════════════════════════════════════════════
+# ──────────── FILE UPLOAD ────────────
 elif page == "📂 File Upload":
     st.title("📂 File Upload")
-    st.caption("Upload Word (.docx), Excel (.xlsx), CSV, PDF, or Text files")
-
-    uploaded=st.file_uploader("Drop files here",type=["docx","xlsx","xls","csv","pdf","txt"],accept_multiple_files=True)
-
+    uploaded=st.file_uploader("Drop files",type=["docx","xlsx","xls","csv","pdf","txt"],accept_multiple_files=True)
     if uploaded:
         for uf in uploaded:
             ext=uf.name.rsplit(".",1)[-1].lower()
-            sz=f"{uf.size/1024:.1f} KB" if uf.size<1048576 else f"{uf.size/1048576:.1f} MB"
-            st.markdown("---")
-            st.subheader(f"📄 {uf.name}")
-            st.caption(f".{ext} · {sz}")
+            st.markdown("---"); st.subheader(f"📄 {uf.name}")
             try:
                 if ext=="csv":
-                    df=pd.read_csv(uf)
-                    st.success(f"{len(df)} rows × {len(df.columns)} columns")
-                    t1,t2=st.tabs(["Data","Statistics"])
-                    with t1: st.dataframe(df,use_container_width=True,hide_index=True)
-                    with t2: st.dataframe(df.describe(),use_container_width=True)
-                    st.download_button("📥 Download CSV",df.to_csv(index=False).encode(),"data.csv","text/csv",key=f"dc_{uf.name}")
+                    df=pd.read_csv(uf); st.success(f"{len(df)} rows"); st.dataframe(df,use_container_width=True,hide_index=True); export_df(df,uf.name,f"exp_{uf.name}")
                 elif ext in ["xlsx","xls"]:
-                    xls=pd.ExcelFile(uf)
-                    sheet=st.selectbox("Sheet",xls.sheet_names,key=f"sh_{uf.name}")
-                    df=pd.read_excel(uf,sheet_name=sheet)
-                    st.success(f"{len(df)} rows × {len(df.columns)} columns")
-                    st.dataframe(df,use_container_width=True,hide_index=True)
-                    st.download_button("📥 Download CSV",df.to_csv(index=False).encode(),"data.csv","text/csv",key=f"dx_{uf.name}")
+                    xls=pd.ExcelFile(uf); sheet=st.selectbox("Sheet",xls.sheet_names,key=f"sh_{uf.name}")
+                    df=pd.read_excel(uf,sheet_name=sheet); st.dataframe(df,use_container_width=True,hide_index=True)
                 elif ext=="docx":
-                    from docx import Document
-                    doc=Document(uf)
-                    paras=[p.text for p in doc.paragraphs if p.text.strip()]
-                    tables=doc.tables
-                    st.success(f"{len(paras)} paragraphs, {len(tables)} tables")
-                    t1,t2=st.tabs(["Text",f"Tables ({len(tables)})"])
-                    with t1:
-                        for p in doc.paragraphs:
-                            if p.text.strip():
-                                if p.style and "Heading" in (p.style.name or ""):
-                                    st.markdown(f"### {p.text}")
-                                else:
-                                    st.markdown(p.text)
-                    with t2:
-                        for ti,table in enumerate(tables):
-                            rows=[[c.text.strip() for c in r.cells] for r in table.rows]
-                            if len(rows)>1:
-                                df_t=pd.DataFrame(rows[1:],columns=rows[0])
-                                st.markdown(f"**Table {ti+1}**")
-                                st.dataframe(df_t,use_container_width=True,hide_index=True)
-                                st.download_button(f"📥 Table {ti+1}",df_t.to_csv(index=False).encode(),f"table_{ti+1}.csv","text/csv",key=f"dt_{uf.name}_{ti}")
+                    from docx import Document; doc=Document(uf)
+                    for p in doc.paragraphs:
+                        if p.text.strip():
+                            if p.style and "Heading" in (p.style.name or ""): st.markdown(f"### {p.text}")
+                            else: st.markdown(p.text)
+                    for ti,table in enumerate(doc.tables):
+                        rows=[[c.text.strip() for c in r.cells] for r in table.rows]
+                        if len(rows)>1: st.dataframe(pd.DataFrame(rows[1:],columns=rows[0]),use_container_width=True,hide_index=True)
                 elif ext=="pdf":
-                    from PyPDF2 import PdfReader
-                    reader=PdfReader(uf)
-                    st.success(f"{len(reader.pages)} pages")
+                    from PyPDF2 import PdfReader; reader=PdfReader(uf)
                     for i,pg in enumerate(reader.pages):
                         txt=pg.extract_text()
-                        if txt:
-                            st.markdown(f"**Page {i+1}**")
-                            st.text(txt)
-                elif ext=="txt":
-                    st.text(uf.read().decode("utf-8",errors="replace"))
-            except Exception as e:
-                st.error(f"Error: {e}")
+                        if txt: st.markdown(f"**Page {i+1}**"); st.text(txt)
+                elif ext=="txt": st.text(uf.read().decode("utf-8",errors="replace"))
+            except Exception as e: st.error(f"Error: {e}")
     else:
-        st.markdown('<div class="card" style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:12px">📂</div><h4>Upload files to get started</h4><div class="sm">Supported: .docx · .xlsx · .csv · .pdf · .txt</div></div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="card" style="text-align:center;padding:40px"><div style="font-size:48px">📂</div><h4>Upload files</h4><div class="sm">.docx · .xlsx · .csv · .pdf · .txt</div></div>',unsafe_allow_html=True)
