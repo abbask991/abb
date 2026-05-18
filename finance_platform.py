@@ -265,6 +265,32 @@ if page == "📊 Dashboard":
             fig2.update_layout(**PL,height=240,showlegend=False)
             st.plotly_chart(fig2,use_container_width=True)
 
+    # ── Dashboard Charts (all roles)
+    st.subheader("📊 Quick Financial Charts")
+    dc1,dc2,dc3 = st.columns(3)
+    with dc1:
+        type_counts = df_txn["Type"].value_counts().reset_index(); type_counts.columns=["Type","Count"]
+        fig_mix = px.pie(type_counts,values="Count",names="Type",hole=0.5,color_discrete_sequence=["#10b981","#ef4444","#6366f1","#f59e0b","#8b5cf6","#06b6d4"])
+        fig_mix.update_layout(**PL,height=220); fig_mix.update_traces(textinfo="value+percent")
+        st.caption("Transaction Mix"); st.plotly_chart(fig_mix,use_container_width=True)
+    with dc2:
+        status_counts = df_txn["Status"].value_counts().reset_index(); status_counts.columns=["Status","Count"]
+        fig_st = px.pie(status_counts,values="Count",names="Status",hole=0.5,color_discrete_map={"Settled":"#10b981","Pending":"#f59e0b","Failed":"#ef4444","Reversed":"#8b5cf6"})
+        fig_st.update_layout(**PL,height=220); fig_st.update_traces(textinfo="value+percent")
+        st.caption("Status Breakdown"); st.plotly_chart(fig_st,use_container_width=True)
+    with dc3:
+        psp_bal = df_psp.groupby("PSP")["Balance"].sum().reset_index()
+        fig_psp = px.bar(psp_bal,x="PSP",y="Balance",color="PSP",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig_psp.update_layout(**PL,height=220,showlegend=False)
+        st.caption("PSP Balances"); st.plotly_chart(fig_psp,use_container_width=True)
+
+    # Hourly activity
+    df_txn["Hour"] = df_txn["Timestamp"].str.extract(r"(\d{2}):\d{2}").astype(int)
+    hourly = df_txn.groupby("Hour").size().reset_index(name="Count")
+    fig_hourly = px.bar(hourly,x="Hour",y="Count",color_discrete_sequence=["#6366f1"])
+    fig_hourly.update_layout(**PL,height=180,showlegend=False,xaxis_title="Hour of Day",yaxis_title="Transactions")
+    st.caption("Hourly Transaction Activity"); st.plotly_chart(fig_hourly,use_container_width=True)
+
     # ── Alerts (all roles)
     st.subheader("🚨 Alerts")
     exceptions_count = len(df_rec[df_rec["Status"]=="Exception"])
@@ -379,6 +405,47 @@ elif page == "💸 Transactions":
             st.dataframe(f[["ID","Type","Source","Client","Amount","CCY","Counterparty","Bank","Status","Timestamp"]],use_container_width=True,hide_index=True,column_config={"Amount":st.column_config.NumberColumn(format="%.2f")})
 
     st.markdown("---")
+
+    # Transaction Analytics Charts
+    st.subheader("📊 Transaction Analytics")
+    tc1,tc2 = st.columns(2)
+    with tc1:
+        src_vol = df_txn.groupby("Source")["Amount"].sum().reset_index().sort_values("Amount",ascending=True)
+        fig_sv = px.bar(src_vol,y="Source",x="Amount",orientation="h",color="Source",color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#8b5cf6","#06b6d4"])
+        fig_sv.update_layout(**PL,height=240,showlegend=False,title="Volume by Source")
+        st.plotly_chart(fig_sv,use_container_width=True)
+    with tc2:
+        src_cnt = df_txn["Source"].value_counts().reset_index(); src_cnt.columns=["Source","Count"]
+        fig_sc = px.pie(src_cnt,values="Count",names="Source",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#8b5cf6","#06b6d4"])
+        fig_sc.update_layout(**PL,height=240); fig_sc.update_traces(textinfo="value+percent")
+        fig_sc.update_layout(title="Transactions by Source")
+        st.plotly_chart(fig_sc,use_container_width=True)
+
+    tc3,tc4 = st.columns(2)
+    with tc3:
+        daily_vol = df_txn.groupby("Value_Date").size().reset_index(name="Count").sort_values("Value_Date")
+        fig_dv = px.line(daily_vol,x="Value_Date",y="Count",markers=True,color_discrete_sequence=["#6366f1"])
+        fig_dv.update_layout(**PL,height=220,title="Daily Transaction Volume")
+        st.plotly_chart(fig_dv,use_container_width=True)
+    with tc4:
+        fig_hist = px.histogram(df_txn,x="Amount",nbins=15,color_discrete_sequence=["#8b5cf6"])
+        fig_hist.update_layout(**PL,height=220,title="Amount Distribution")
+        st.plotly_chart(fig_hist,use_container_width=True)
+
+    tc5,tc6 = st.columns(2)
+    with tc5:
+        client_vol = df_txn.groupby("Client")["Amount"].sum().nlargest(8).reset_index()
+        fig_cv = px.bar(client_vol,x="Client",y="Amount",color_discrete_sequence=["#10b981"])
+        fig_cv.update_layout(**PL,height=220,showlegend=False,title="Top Clients by Volume")
+        st.plotly_chart(fig_cv,use_container_width=True)
+    with tc6:
+        ccy_vol = df_txn.groupby("CCY")["Amount"].sum().reset_index()
+        fig_ccv = px.pie(ccy_vol,values="Amount",names="CCY",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444"])
+        fig_ccv.update_layout(**PL,height=220); fig_ccv.update_traces(textinfo="value+percent")
+        fig_ccv.update_layout(title="Volume by Currency")
+        st.plotly_chart(fig_ccv,use_container_width=True)
+
+    st.markdown("---")
     st.subheader("Transaction Details")
     sel=st.selectbox("Select transaction",df_txn["ID"].tolist())
     if sel:
@@ -404,6 +471,31 @@ elif page == "🔄 Reconciliation":
     c2.metric("⚠️ Partial",p,f"{p/len(df_rec)*100:.0f}%")
     c3.metric("❌ Exceptions",e,delta_color="inverse")
     c4.metric("Recon Rate",f"{m/len(df_rec)*100:.1f}%")
+
+    # Recon Charts
+    rc1,rc2,rc3 = st.columns(3)
+    with rc1:
+        rec_pie = pd.DataFrame({"Status":["Matched","Partial","Exception"],"Count":[m,p,e]})
+        fig_rp = px.pie(rec_pie,values="Count",names="Status",hole=0.55,color_discrete_map={"Matched":"#10b981","Partial":"#f59e0b","Exception":"#ef4444"})
+        fig_rp.update_layout(**PL,height=220); fig_rp.update_traces(textinfo="value+percent")
+        st.caption("Match Distribution"); st.plotly_chart(fig_rp,use_container_width=True)
+    with rc2:
+        fig_score = px.histogram(df_rec,x="Score",nbins=10,color_discrete_sequence=["#6366f1"])
+        fig_score.update_layout(**PL,height=220,title="Score Distribution")
+        st.plotly_chart(fig_score,use_container_width=True)
+    with rc3:
+        method_cnt = df_rec["Method"].value_counts().reset_index(); method_cnt.columns=["Method","Count"]
+        fig_mc = px.bar(method_cnt,x="Method",y="Count",color_discrete_sequence=["#8b5cf6"])
+        fig_mc.update_layout(**PL,height=220,showlegend=False,title="Match Methods Used")
+        st.plotly_chart(fig_mc,use_container_width=True)
+
+    # Variance chart
+    variance_data = df_rec[df_rec["Status"].isin(["Partial","Exception"])].copy()
+    if len(variance_data) > 0:
+        variance_data["Variance"] = variance_data["Bank_Amt"] - variance_data["CRM_Amt"]
+        fig_var = px.bar(variance_data,x="Case_ID",y="Variance",color=variance_data["Variance"].apply(lambda x:"Surplus" if x>0 else "Deficit" if x<0 else "Zero"),color_discrete_map={"Surplus":"#10b981","Deficit":"#ef4444","Zero":"#94a3b8"})
+        fig_var.update_layout(**PL,height=200,showlegend=True,title="Variance Analysis (Bank − CRM)")
+        st.plotly_chart(fig_var,use_container_width=True)
 
     tab1,tab2,tab3=st.tabs(["Matched","Partial","Exceptions"])
     for tab,status in [(tab1,"Matched"),(tab2,"Partial"),(tab3,"Exception")]:
@@ -440,6 +532,36 @@ elif page == "📒 Ledger":
     c3.metric("Balance Check","✅ Balanced" if abs(total_dr-total_cr)<0.01 else "❌ Imbalanced")
     c4.metric("Entries",len(df_led))
 
+    # Ledger Charts
+    lc1,lc2 = st.columns(2)
+    with lc1:
+        acct_dr = df_led.groupby("Account")["Debit"].sum().reset_index()
+        acct_cr = df_led.groupby("Account")["Credit"].sum().reset_index()
+        fig_drcr = go.Figure()
+        fig_drcr.add_trace(go.Bar(x=acct_dr["Account"],y=acct_dr["Debit"],name="Debit",marker_color="#06b6d4"))
+        fig_drcr.add_trace(go.Bar(x=acct_cr["Account"],y=acct_cr["Credit"],name="Credit",marker_color="#8b5cf6"))
+        fig_drcr.update_layout(**PL,height=260,barmode="group",title="Debit vs Credit by Account")
+        st.plotly_chart(fig_drcr,use_container_width=True)
+    with lc2:
+        daily_entries = df_led.groupby("Date").size().reset_index(name="Entries")
+        fig_de = px.bar(daily_entries,x="Date",y="Entries",color_discrete_sequence=["#6366f1"])
+        fig_de.update_layout(**PL,height=260,showlegend=False,title="Daily Journal Volume")
+        st.plotly_chart(fig_de,use_container_width=True)
+
+    lc3,lc4 = st.columns(2)
+    with lc3:
+        acct_counts = df_led["Account"].value_counts().reset_index(); acct_counts.columns=["Account","Entries"]
+        fig_ac = px.pie(acct_counts,values="Entries",names="Account",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
+        fig_ac.update_layout(**PL,height=240); fig_ac.update_traces(textinfo="value+percent")
+        fig_ac.update_layout(title="Entries by Account")
+        st.plotly_chart(fig_ac,use_container_width=True)
+    with lc4:
+        net_by_acct = df_led.groupby("Account").agg(Net=("Debit","sum")).reset_index()
+        net_by_acct["Net"] = df_led.groupby("Account")["Debit"].sum().values - df_led.groupby("Account")["Credit"].sum().values
+        fig_nb = px.bar(net_by_acct,x="Account",y="Net",color=net_by_acct["Net"].apply(lambda x:"Positive" if x>=0 else "Negative"),color_discrete_map={"Positive":"#10b981","Negative":"#ef4444"})
+        fig_nb.update_layout(**PL,height=240,showlegend=False,title="Net Balance by Account")
+        st.plotly_chart(fig_nb,use_container_width=True)
+
     acct_filter=st.selectbox("Filter by Account",["All","Client Liability","Cash Account","PSP Account","Fee Account","Commission Account"])
     view = df_led if acct_filter=="All" else df_led[df_led["Account"]==acct_filter]
 
@@ -467,6 +589,32 @@ elif page == "💧 Liquidity":
     c2.metric("Pending Withdrawals",fmt(pending_wd),delta_color="inverse")
     c3.metric("Liabilities",fmt(bonus_liability+commission_liability),delta_color="inverse")
     c4.metric("Net Liquidity",fmt(net_liquidity),f"Buffer: {buffer_pct:.1f}%")
+
+    # Liquidity Charts
+    liq1,liq2,liq3 = st.columns(3)
+    with liq1:
+        bank_by_ccy = df_bank.groupby("CCY")["Balance"].sum().reset_index()
+        fig_bc = px.pie(bank_by_ccy,values="Balance",names="CCY",hole=0.55,color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig_bc.update_layout(**PL,height=220); fig_bc.update_traces(textinfo="value+percent")
+        st.caption("Bank by Currency"); st.plotly_chart(fig_bc,use_container_width=True)
+    with liq2:
+        psp_comp = df_psp.groupby("PSP").agg(Balance=("Balance","sum"),Pending=("Pending_Out","sum")).reset_index()
+        fig_pc = go.Figure()
+        fig_pc.add_trace(go.Bar(x=psp_comp["PSP"],y=psp_comp["Balance"],name="Balance",marker_color="#10b981"))
+        fig_pc.add_trace(go.Bar(x=psp_comp["PSP"],y=psp_comp["Pending"],name="Pending Out",marker_color="#ef4444"))
+        fig_pc.update_layout(**PL,height=220,barmode="group")
+        st.caption("PSP Balance vs Pending"); st.plotly_chart(fig_pc,use_container_width=True)
+    with liq3:
+        fig_gauge = go.Figure(go.Indicator(mode="gauge+number",value=buffer_pct,title={"text":"Buffer %"},gauge={"axis":{"range":[0,30]},"bar":{"color":"#ef4444" if buffer_pct<15 else "#10b981"},"steps":[{"range":[0,15],"color":"rgba(239,68,68,.15)"},{"range":[15,30],"color":"rgba(16,185,129,.15)"}],"threshold":{"line":{"color":"#f59e0b","width":3},"thickness":0.8,"value":15}}))
+        fig_gauge.update_layout(**PL,height=220)
+        st.caption("Liquidity Buffer Gauge"); st.plotly_chart(fig_gauge,use_container_width=True)
+
+    # Cash flow waterfall
+    waterfall_items = ["Bank Balances","PSP Balances","Pending Out","Bonus","Commissions","Net Liquidity"]
+    waterfall_vals = [total_bank,total_psp,-pending_wd,-bonus_liability,-commission_liability,net_liquidity]
+    fig_wf = go.Figure(go.Waterfall(x=waterfall_items,y=waterfall_vals,measure=["relative","relative","relative","relative","relative","total"],connector={"line":{"color":"#334155"}},increasing={"marker":{"color":"#10b981"}},decreasing={"marker":{"color":"#ef4444"}},totals={"marker":{"color":"#6366f1"}}))
+    fig_wf.update_layout(**PL,height=280,title="Liquidity Waterfall")
+    st.plotly_chart(fig_wf,use_container_width=True)
 
     cl,cr=st.columns(2)
     with cl:
@@ -500,6 +648,24 @@ elif "Alerts" in page:
     c2.metric("🟡 Open",len(df_alerts[df_alerts["Status"]=="Open"]))
     c3.metric("🔵 Investigating",len(df_alerts[df_alerts["Status"]=="Investigating"]))
     c4.metric("🟢 Resolved",len(df_alerts[df_alerts["Status"]=="Resolved"]))
+
+    # Alert Charts
+    ac1,ac2,ac3 = st.columns(3)
+    with ac1:
+        sev_cnt = df_alerts["Severity"].value_counts().reset_index(); sev_cnt.columns=["Severity","Count"]
+        fig_sev = px.pie(sev_cnt,values="Count",names="Severity",hole=0.55,color_discrete_map={"Critical":"#ef4444","High":"#f59e0b","Medium":"#f59e0b","Low":"#3b82f6"})
+        fig_sev.update_layout(**PL,height=200); fig_sev.update_traces(textinfo="value+percent")
+        st.caption("By Severity"); st.plotly_chart(fig_sev,use_container_width=True)
+    with ac2:
+        cat_cnt = df_alerts["Category"].value_counts().reset_index(); cat_cnt.columns=["Category","Count"]
+        fig_cat = px.bar(cat_cnt,x="Category",y="Count",color="Category",color_discrete_sequence=["#6366f1","#10b981","#f59e0b"])
+        fig_cat.update_layout(**PL,height=200,showlegend=False)
+        st.caption("By Category"); st.plotly_chart(fig_cat,use_container_width=True)
+    with ac3:
+        stat_cnt = df_alerts["Status"].value_counts().reset_index(); stat_cnt.columns=["Status","Count"]
+        fig_stat = px.pie(stat_cnt,values="Count",names="Status",hole=0.55,color_discrete_map={"Open":"#f59e0b","Investigating":"#3b82f6","Resolved":"#10b981"})
+        fig_stat.update_layout(**PL,height=200); fig_stat.update_traces(textinfo="value+percent")
+        st.caption("By Status"); st.plotly_chart(fig_stat,use_container_width=True)
 
     tab_all,tab_fin,tab_ops,tab_comp=st.tabs(["All","Financial","Operational","Compliance"])
 
@@ -574,6 +740,26 @@ elif page == "📈 Reports & Analytics":
         m1.metric("Revenue",fmt(total_rev))
         m2.metric("Costs",fmt(total_cost))
         m3.metric("Profit",fmt(total_prof),f"Margin: {total_prof/total_rev*100:.1f}%")
+
+        # Monthly charts
+        mr1,mr2 = st.columns(2)
+        with mr1:
+            fig_rev = go.Figure()
+            fig_rev.add_trace(go.Bar(x=df_kpi["Month"],y=df_kpi["Net_Flow"],name="Net Flow",marker_color="#10b981"))
+            fig_rev.add_trace(go.Bar(x=df_kpi["Month"],y=df_kpi["Op_Costs"],name="Op Costs",marker_color="#ef4444"))
+            fig_rev.update_layout(**PL,height=260,barmode="group",title="Revenue vs Costs Trend")
+            st.plotly_chart(fig_rev,use_container_width=True)
+        with mr2:
+            margin_data = df_kpi.copy()
+            margin_data["Margin"] = ((margin_data["Net_Flow"] - margin_data["Op_Costs"]) / margin_data["Net_Flow"] * 100)
+            fig_margin = px.line(margin_data,x="Month",y="Margin",markers=True,color_discrete_sequence=["#8b5cf6"])
+            fig_margin.update_layout(**PL,height=260,title="Profit Margin Trend (%)")
+            st.plotly_chart(fig_margin,use_container_width=True)
+
+        # Profitability treemap
+        fig_tree = px.treemap(df_profit,path=["Client"],values="Profit",color="Profit",color_continuous_scale=["#ef4444","#f59e0b","#10b981"])
+        fig_tree.update_layout(**PL,height=280,title="Client Profitability Map")
+        st.plotly_chart(fig_tree,use_container_width=True)
 
     with tab_profit:
         st.subheader("💰 Profitability Analysis")
@@ -682,12 +868,35 @@ elif page == "🛡️ Risk Monitor":
     ]:
         st.markdown(f'<div class="risk-row"><span class="risk-label">{status} {label}</span><span class="risk-val">{val} <span class="sm">({threshold})</span></span></div>',unsafe_allow_html=True)
 
+    # Risk Radar Chart
+    st.subheader("Risk Radar")
+    risk_scores = {"Liquidity": 85 if liq_risk=="Green" else 50 if liq_risk=="Yellow" else 20,
+                   "Settlement": 80 if settle_risk=="Green" else 50 if settle_risk=="Yellow" else 20,
+                   "Operational": 80 if ops_risk=="Green" else 50 if ops_risk=="Yellow" else 20,
+                   "Concentration": 70 if conc_risk=="Green" else 45 if conc_risk=="Yellow" else 20,
+                   "Compliance": 60}
+    categories = list(risk_scores.keys())
+    values = list(risk_scores.values())
+    fig_radar = go.Figure()
+    fig_radar.add_trace(go.Scatterpolar(r=values+[values[0]],theta=categories+[categories[0]],fill="toself",fillcolor="rgba(99,102,241,.15)",line=dict(color="#6366f1",width=2),name="Current"))
+    fig_radar.add_trace(go.Scatterpolar(r=[80]*6,theta=categories+[categories[0]],line=dict(color="#10b981",width=1,dash="dash"),name="Target"))
+    fig_radar.update_layout(**PL,height=320,polar=dict(bgcolor="rgba(0,0,0,0)",radialaxis=dict(visible=True,range=[0,100],gridcolor="#1e2d4a"),angularaxis=dict(gridcolor="#1e2d4a")))
+    st.plotly_chart(fig_radar,use_container_width=True)
+
     st.subheader("Concentration Risk")
-    st.markdown("**PSP Volume Distribution**")
-    psp_vol=df_txn.groupby("Counterparty")["Amount"].sum().reset_index().sort_values("Amount",ascending=False)
-    fig_conc=px.pie(psp_vol,values="Amount",names="Counterparty",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
-    fig_conc.update_layout(**PL,height=280)
-    st.plotly_chart(fig_conc,use_container_width=True)
+    cr1,cr2 = st.columns(2)
+    with cr1:
+        st.markdown("**PSP Volume Distribution**")
+        psp_vol=df_txn.groupby("Counterparty")["Amount"].sum().reset_index().sort_values("Amount",ascending=False)
+        fig_conc=px.pie(psp_vol,values="Amount",names="Counterparty",hole=0.5,color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6"])
+        fig_conc.update_layout(**PL,height=260)
+        st.plotly_chart(fig_conc,use_container_width=True)
+    with cr2:
+        st.markdown("**Client Volume Distribution**")
+        client_vol=df_txn.groupby("Client")["Amount"].sum().nlargest(6).reset_index()
+        fig_cv=px.pie(client_vol,values="Amount",names="Client",hole=0.5,color_discrete_sequence=["#10b981","#6366f1","#f59e0b","#8b5cf6","#06b6d4","#ef4444"])
+        fig_cv.update_layout(**PL,height=260)
+        st.plotly_chart(fig_cv,use_container_width=True)
 
     st.subheader("Scenario Analysis")
     st.markdown("**What if withdrawals increase by:**")
