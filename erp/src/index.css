@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+.card {
+  @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+}
+
+.card-header {
+  @apply px-6 py-4 border-b border-gray-100;
+}
+
+.card-body {
+  @apply px-6 py-4;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300 border border-gray-300;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.btn-success {
+  @apply bg-emerald-600 text-white hover:bg-emerald-700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.btn-ghost {
+  @apply text-gray-600 hover:bg-gray-100;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  @apply bg-emerald-100 text-emerald-800;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-warning {
+  @apply bg-amber-100 text-amber-800;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-gray {
+  @apply bg-gray-100 text-gray-700;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.input {
+  @apply w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
+}
+
+.select {
+  @apply w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white;
+}
+
+.table-container {
+  @apply overflow-x-auto;
+}
+
+.table {
+  @apply w-full text-sm text-left;
+}
+
+.table thead {
+  @apply bg-gray-50 border-b border-gray-200;
+}
+
+.table th {
+  @apply px-4 py-3 font-semibold text-gray-600 uppercase text-xs tracking-wider;
+}
+
+.table td {
+  @apply px-4 py-3 border-b border-gray-100;
+}
+
+.table tbody tr:hover {
+  @apply bg-gray-50;
+}
+
+.kpi-card {
+  @apply bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-2;
+}
+
+.page-header {
+  @apply mb-6;
+}
+
+.page-title {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+.page-subtitle {
+  @apply text-sm text-gray-500 mt-1;
+}
+
+.tab-active {
+  @apply border-b-2 border-blue-600 text-blue-600 font-medium;
+}
+
+.tab-inactive {
+  @apply text-gray-500 hover:text-gray-700;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
