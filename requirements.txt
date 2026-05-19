@@ -10,3 +10,4 @@ networkx
 python-docx
 openpyxl
 PyPDF2
+scikit-learn
