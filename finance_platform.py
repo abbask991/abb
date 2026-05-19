@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io, json
 
-st.set_page_config(page_title="FinanceOps", page_icon="🏛️", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="FinanceOps", page_icon="F", layout="wide", initial_sidebar_state="expanded")
 
 # ══════════════════════════════════════════════
 # SESSION STATE DEFAULTS
@@ -92,11 +92,11 @@ def fmt(n):
 def fmt_usd(n): return f"${n:,.0f}"
 
 def badge(t, c="blue"): return f'<span class="badge bg-{c}">{t}</span>'
-def sev_icon(s): return {"Critical":"🔴","High":"🟠","Medium":"🟡","Low":"🔵"}.get(s,"⚪")
+def sev_icon(s): return {"Critical":"[!]","High":"[!]","Medium":"[~]","Low":"[i]"}.get(s,"[-]")
 
 def export_df(df, name, key):
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(f"📥 Export {name}", csv, f"{name.lower().replace(' ','_')}.csv", "text/csv", key=key)
+    st.download_button(f"Export {name}", csv, f"{name.lower().replace(' ','_')}.csv", "text/csv", key=key)
 
 def add_audit(user, action, section):
     st.session_state.audit_log.insert(0, {"Time": datetime.now().strftime("%Y-%m-%d %H:%M"), "User": user, "Action": action, "Section": section})
@@ -277,21 +277,21 @@ open_alerts = len(df_alerts[df_alerts["Status"].isin(["Open","Investigating"])])
 # SIDEBAR
 # ══════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("### 🏛️ **FinanceOps**")
+    st.markdown("### **FinanceOps**")
     st.caption("Financial Control & Intelligence")
     st.markdown("---")
 
     # Theme toggle
-    theme_label = "🌙 Dark" if dark else "☀️ Light"
+    theme_label = "Dark" if dark else "Light"
     if st.button(f"Theme: {theme_label}", use_container_width=True):
         st.session_state.theme = "light" if dark else "dark"
         st.rerun()
 
     # Multi-currency
-    st.session_state.base_ccy = st.selectbox("💱 Base Currency", ["USD","EUR","GBP"], index=["USD","EUR","GBP"].index(st.session_state.base_ccy))
+    st.session_state.base_ccy = st.selectbox("Base Currency", ["USD","EUR","GBP"], index=["USD","EUR","GBP"].index(st.session_state.base_ccy))
 
     # Auto-refresh
-    refresh = st.selectbox("🔄 Auto-Refresh", ["Off","30s","60s","5m"], index=0)
+    refresh = st.selectbox("Auto-Refresh", ["Off","30s","60s","5m"], index=0)
     if refresh != "Off":
         secs = {"30s":30,"60s":60,"5m":300}[refresh]
         st.caption(f"Refreshing every {refresh}")
@@ -302,29 +302,29 @@ with st.sidebar:
 
     # Notification bell
     unread = open_alerts - len(st.session_state.notifications_read)
-    notif_label = f"🔔 Notifications ({unread})" if unread > 0 else "🔔 Notifications"
+    notif_label = f"Notifications ({unread})" if unread > 0 else "Notifications"
 
     page = st.radio("", [
-        "📊 Dashboard",
+        "Dashboard",
         notif_label,
-        "👤 Client 360",
-        "💸 Transactions",
-        "🔄 Reconciliation",
-        "📒 Ledger",
-        "💧 Liquidity",
-        "📡 PSP Scorecard",
-        f"⚠️ Alerts ({open_alerts})",
-        "📈 Reports",
-        "🔮 Cash Forecast",
-        "🛡️ Risk Monitor",
-        "📋 Audit Log",
-        "🏗️ Architecture",
-        "🔌 Integrations",
-        "⚙️ Settings",
-        "📂 File Upload",
+        "Client 360",
+        "Transactions",
+        "Reconciliation",
+        "Ledger",
+        "Liquidity",
+        "PSP Scorecard",
+        f"Alerts ({open_alerts})",
+        "Reports",
+        "Cash Forecast",
+        "Risk Monitor",
+        "Audit Log",
+        "Architecture",
+        "Integrations",
+        "Settings",
+        "File Upload",
     ], label_visibility="collapsed")
     st.markdown("---")
-    st.markdown("🟢 **System Online**")
+    st.markdown("**System Online**")
     st.caption(datetime.now().strftime("%a, %b %d, %Y — %H:%M"))
 
 
@@ -333,22 +333,22 @@ with st.sidebar:
 # ══════════════════════════════════════════════
 
 # ──────────── DASHBOARD ────────────
-if page == "📊 Dashboard":
-    st.title("📊 Dashboard — Financial Control Tower")
-    role = st.radio("View as:", ["👔 CFO","📊 Finance Manager","⚙️ Operations"], horizontal=True)
+if page == "Dashboard":
+    st.title("Dashboard — Financial Control Tower")
+    role = st.radio("View as:", ["CFO","Finance Manager","Operations"], horizontal=True)
 
     # Comparison toggle
-    compare = st.toggle("📊 Compare with last week", value=False)
+    compare = st.toggle("Compare with last week", value=False)
 
-    st.subheader("💵 Financial Overview")
+    st.subheader("Financial Overview")
     f1,f2,f3,f4 = st.columns(4)
     f1.metric("Opening Balance", fmt(opening_balance))
     f2.metric("Cash In Today", fmt(cash_in), f"+{cash_in/opening_balance*100:.1f}%")
     f3.metric("Cash Out Today", fmt(cash_out), f"-{cash_out/opening_balance*100:.1f}%", delta_color="inverse")
     f4.metric("Net Flow", fmt(net_flow))
 
-    if role in ["👔 CFO","📊 Finance Manager"]:
-        st.subheader("💧 Liquidity")
+    if role in ["CFO","Finance Manager"]:
+        st.subheader("Liquidity")
         l1,l2,l3,l4 = st.columns(4)
         l1.metric("Available Cash", fmt(available_cash))
         l2.metric("Pending WD", fmt(pending_wd), delta_color="inverse")
@@ -392,7 +392,7 @@ if page == "📊 Dashboard":
         fig_p.update_layout(**PL,height=200,showlegend=False)
         st.caption("PSP Balances"); st.plotly_chart(fig_p,use_container_width=True)
 
-    st.subheader("🚨 Alerts")
+    st.subheader("Alerts")
     a1,a2,a3 = st.columns(3)
     a1.metric("Exceptions", len(df_rec[df_rec["Status"]=="Exception"]), delta_color="inverse")
     a2.metric("Delays", len(df_alerts[df_alerts["Title"].str.contains("Delay",case=False)&(df_alerts["Status"]!="Resolved")]), delta_color="inverse")
@@ -401,14 +401,14 @@ if page == "📊 Dashboard":
     for _,al in df_alerts[df_alerts["Status"].isin(["Open","Investigating"])].iterrows():
         st.markdown(f'<div class="alert-card"><div class="alert-title">{sev_icon(al["Severity"])} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Category"],"blue")} {badge(al["Status"],"yellow")}</div></div>',unsafe_allow_html=True)
 
-    st.subheader("📈 KPIs")
+    st.subheader("KPIs")
     k1,k2,k3 = st.columns(3)
     k1.metric("Daily Volume", f"{len(df_txn[df_txn['Value_Date']==today])} txns")
     k2.metric("Recon Rate", f"{recon_rate:.1f}%", f"{matched_count}/{len(df_rec)}")
     k3.metric("Unmatched", unmatched, delta_color="inverse")
 
-    if role == "👔 CFO":
-        st.subheader("🧠 Financial Intelligence")
+    if role == "CFO":
+        st.subheader("Financial Intelligence")
         ci1,ci2 = st.columns(2)
         with ci1:
             st.markdown("**Top Profitable Clients**")
@@ -422,24 +422,24 @@ if page == "📊 Dashboard":
 
 # ──────────── NOTIFICATIONS ────────────
 elif "Notifications" in page:
-    st.title("🔔 Notification Center")
+    st.title("Notification Center")
     for _,al in df_alerts.iterrows():
         is_read = al["ID"] in st.session_state.notifications_read
-        icon = "📩" if not is_read else "📨"
+        icon = "NEW" if not is_read else "READ"
         st.markdown(f'<div class="alert-card" style="opacity:{"0.6" if is_read else "1"}"><div class="alert-title">{icon} {al["Title"]}</div><div class="alert-desc">{al["Description"]}</div><div style="margin-top:6px">{badge(al["Severity"],"red" if al["Severity"] in ["Critical","High"] else "yellow")} {badge(al["Status"],"yellow" if al["Status"]!="Resolved" else "green")} <span class="sm">{al["Created"]}</span></div></div>',unsafe_allow_html=True)
         if not is_read:
             if st.button(f"Mark as read", key=f"read_{al['ID']}"):
                 st.session_state.notifications_read.add(al["ID"])
                 st.rerun()
-    if st.button("✅ Mark all as read", use_container_width=True):
+    if st.button("Mark all as read", use_container_width=True):
         for _,al in df_alerts.iterrows():
             st.session_state.notifications_read.add(al["ID"])
         st.rerun()
 
 
 # ──────────── CLIENT 360 ────────────
-elif page == "👤 Client 360":
-    st.title("👤 Client 360 View")
+elif page == "Client 360":
+    st.title("Client 360 View")
     clients = sorted(df_txn[df_txn["Client"]!="Internal"]["Client"].unique().tolist())
     sel_client = st.selectbox("Select Client", clients)
     client_txns = df_txn[df_txn["Client"]==sel_client]
@@ -491,8 +491,8 @@ elif page == "👤 Client 360":
 
 
 # ──────────── TRANSACTIONS ────────────
-elif page == "💸 Transactions":
-    st.title("💸 Transactions")
+elif page == "Transactions":
+    st.title("Transactions")
     s1,s2,s3,s4,s5 = st.columns(5)
     s1.metric("CRM",len(df_txn[df_txn["Source"]=="CRM"])); s2.metric("PSP",len(df_txn[df_txn["Source"]=="PSP"]))
     s3.metric("Bank",len(df_txn[df_txn["Source"]=="Bank"])); s4.metric("Commission",len(df_txn[df_txn["Source"]=="Commission"]))
@@ -528,12 +528,12 @@ elif page == "💸 Transactions":
 
 
 # ──────────── RECONCILIATION ────────────
-elif page == "🔄 Reconciliation":
-    st.title("🔄 Smart Reconciliation Engine")
+elif page == "Reconciliation":
+    st.title("Smart Reconciliation Engine")
     st.caption("3-way match: CRM ↔ PSP ↔ Bank")
     m=len(df_rec[df_rec["Status"]=="Matched"]); p=len(df_rec[df_rec["Status"]=="Partial"]); e=len(df_rec[df_rec["Status"]=="Exception"])
     c1,c2,c3,c4=st.columns(4)
-    c1.metric("✅ Matched",m); c2.metric("⚠️ Partial",p); c3.metric("❌ Exceptions",e,delta_color="inverse"); c4.metric("Rate",f"{m/len(df_rec)*100:.1f}%")
+    c1.metric("Matched",m); c2.metric("Partial",p); c3.metric("Exceptions",e,delta_color="inverse"); c4.metric("Rate",f"{m/len(df_rec)*100:.1f}%")
 
     # Charts
     rc1,rc2 = st.columns(2)
@@ -560,19 +560,19 @@ elif page == "🔄 Reconciliation":
         cs=df_rec[df_rec["Case_ID"]==sel].iloc[0]
         st.info(f"**{cs['Case_ID']}** — {cs['Notes']}")
         bc1,bc2,bc3=st.columns(3)
-        if bc1.button("🔍 Investigate",key="inv",use_container_width=True): add_audit("Current User",f"Investigated {sel}","Reconciliation")
-        if bc2.button("✅ Approve",key="app",use_container_width=True): add_audit("Current User",f"Approved {sel}","Reconciliation")
-        if bc3.button("❌ Reject",key="rej",use_container_width=True): add_audit("Current User",f"Rejected {sel}","Reconciliation")
+        if bc1.button("Investigate",key="inv",use_container_width=True): add_audit("Current User",f"Investigated {sel}","Reconciliation")
+        if bc2.button("Approve",key="app",use_container_width=True): add_audit("Current User",f"Approved {sel}","Reconciliation")
+        if bc3.button("Reject",key="rej",use_container_width=True): add_audit("Current User",f"Rejected {sel}","Reconciliation")
         show_comments(sel)
 
 
 # ──────────── LEDGER ────────────
-elif page == "📒 Ledger":
-    st.title("📒 Ledger — Single Source of Truth")
+elif page == "Ledger":
+    st.title("Ledger — Single Source of Truth")
     dr=df_led["Debit"].sum(); cr_total=df_led["Credit"].sum()
     c1,c2,c3,c4=st.columns(4)
     c1.metric("Debits",fmt_usd(dr)); c2.metric("Credits",fmt_usd(cr_total))
-    c3.metric("Balance","✅ OK" if abs(dr-cr_total)<0.01 else "❌"); c4.metric("Entries",len(df_led))
+    c3.metric("Balance","OK" if abs(dr-cr_total)<0.01 else "IMBALANCED"); c4.metric("Entries",len(df_led))
 
     lc1,lc2 = st.columns(2)
     with lc1:
@@ -595,8 +595,8 @@ elif page == "📒 Ledger":
 
 
 # ──────────── LIQUIDITY ────────────
-elif page == "💧 Liquidity":
-    st.title("💧 Liquidity Intelligence")
+elif page == "Liquidity":
+    st.title("Liquidity Intelligence")
     c1,c2,c3,c4=st.columns(4)
     c1.metric("Available",fmt(available_cash)); c2.metric("Pending WD",fmt(pending_wd),delta_color="inverse")
     c3.metric("Liabilities",fmt(bonus_liability+commission_liability),delta_color="inverse"); c4.metric("Net Liquidity",fmt(net_liquidity),f"Buffer: {buffer_pct:.1f}%")
@@ -621,19 +621,19 @@ elif page == "💧 Liquidity":
     fig_wf.update_layout(**PL,height=260,title="Liquidity Waterfall"); st.plotly_chart(fig_wf,use_container_width=True)
 
     cl,cr=st.columns(2)
-    with cl: st.subheader("🏦 Banks"); st.dataframe(df_bank,use_container_width=True,hide_index=True); export_df(df_bank,"Bank_Balances","exp_bank")
-    with cr: st.subheader("💳 PSPs"); st.dataframe(df_psp[["PSP","CCY","Balance","Pending_In","Pending_Out"]],use_container_width=True,hide_index=True); export_df(df_psp,"PSP_Balances","exp_psp")
+    with cl: st.subheader("Banks"); st.dataframe(df_bank,use_container_width=True,hide_index=True); export_df(df_bank,"Bank_Balances","exp_bank")
+    with cr: st.subheader("PSPs"); st.dataframe(df_psp[["PSP","CCY","Balance","Pending_In","Pending_Out"]],use_container_width=True,hide_index=True); export_df(df_psp,"PSP_Balances","exp_psp")
 
 
 # ──────────── PSP SCORECARD ────────────
-elif page == "📡 PSP Scorecard":
-    st.title("📡 PSP Performance Scorecard")
+elif page == "PSP Scorecard":
+    st.title("PSP Performance Scorecard")
     psp_summary = df_psp.groupby("PSP").agg(Total_Balance=("Balance","sum"),Total_Pending=("Pending_Out","sum"),Avg_Success=("Success_Rate","mean"),Avg_Settlement=("Avg_Settlement","first"),Avg_Cost=("Cost_Per_Txn","mean")).reset_index()
     psp_txns = df_txn[df_txn["Counterparty"].isin(df_psp["PSP"].unique())].groupby("Counterparty").size().reset_index(name="Txn_Count")
     psp_summary = psp_summary.merge(psp_txns, left_on="PSP", right_on="Counterparty", how="left").drop("Counterparty",axis=1).fillna(0)
 
     for _,psp in psp_summary.iterrows():
-        st.subheader(f"💳 {psp['PSP']}")
+        st.subheader(f"{psp['PSP']}")
         p1,p2,p3,p4,p5=st.columns(5)
         p1.metric("Balance",fmt_usd(psp["Total_Balance"]))
         p2.metric("Pending Out",fmt_usd(psp["Total_Pending"]))
@@ -654,12 +654,12 @@ elif page == "📡 PSP Scorecard":
 
 # ──────────── ALERTS ────────────
 elif "Alerts" in page:
-    st.title("⚠️ Alerts & Exceptions")
+    st.title("Alerts & Exceptions")
     c1,c2,c3,c4=st.columns(4)
-    c1.metric("🔴 Critical",len(df_alerts[(df_alerts["Severity"]=="Critical")&(df_alerts["Status"]!="Resolved")]))
-    c2.metric("🟡 Open",len(df_alerts[df_alerts["Status"]=="Open"]))
-    c3.metric("🔵 Investigating",len(df_alerts[df_alerts["Status"]=="Investigating"]))
-    c4.metric("🟢 Resolved",len(df_alerts[df_alerts["Status"]=="Resolved"]))
+    c1.metric("Critical",len(df_alerts[(df_alerts["Severity"]=="Critical")&(df_alerts["Status"]!="Resolved")]))
+    c2.metric("Open",len(df_alerts[df_alerts["Status"]=="Open"]))
+    c3.metric("Investigating",len(df_alerts[df_alerts["Status"]=="Investigating"]))
+    c4.metric("Resolved",len(df_alerts[df_alerts["Status"]=="Resolved"]))
 
     # Charts
     ac1,ac2=st.columns(2)
@@ -693,16 +693,16 @@ elif "Alerts" in page:
         al=df_alerts[df_alerts["ID"]==sel].iloc[0]
         st.info(f"**{al['Title']}** — {al['Description']}")
         bc1,bc2,bc3,bc4=st.columns(4)
-        if bc1.button("📋 Open",use_container_width=True,key="oc2"): add_audit("Current User",f"Opened case {sel}","Alerts")
-        if bc2.button("🔍 Investigate",use_container_width=True,key="inv3"): add_audit("Current User",f"Investigating {sel}","Alerts")
-        if bc3.button("✅ Resolve",use_container_width=True,key="res2"): add_audit("Current User",f"Resolved {sel}","Alerts")
-        bc4.button("❌ Dismiss",use_container_width=True,key="dis2")
+        if bc1.button("Open Case",use_container_width=True,key="oc2"): add_audit("Current User",f"Opened case {sel}","Alerts")
+        if bc2.button("Investigate",use_container_width=True,key="inv3"): add_audit("Current User",f"Investigating {sel}","Alerts")
+        if bc3.button("Resolve",use_container_width=True,key="res2"): add_audit("Current User",f"Resolved {sel}","Alerts")
+        bc4.button("Dismiss",use_container_width=True,key="dis2")
         show_comments(sel)
 
 
 # ──────────── REPORTS ────────────
-elif page == "📈 Reports":
-    st.title("📈 Reports & Analytics")
+elif page == "Reports":
+    st.title("Reports & Analytics")
     tab_daily,tab_profit,tab_kpis=st.tabs(["Daily/Weekly/Monthly","Profitability","KPIs"])
 
     with tab_daily:
@@ -756,8 +756,8 @@ elif page == "📈 Reports":
 
 
 # ──────────── CASH FORECAST ────────────
-elif page == "🔮 Cash Forecast":
-    st.title("🔮 Cash Flow Forecast")
+elif page == "Cash Forecast":
+    st.title("Cash Flow Forecast")
     st.caption("7-day projection based on historical trend")
     avg_dep = df_cash["Deposits"].mean(); avg_wd = df_cash["Withdrawals"].mean()
     std_dep = df_cash["Deposits"].std(); std_wd = df_cash["Withdrawals"].std()
@@ -793,8 +793,8 @@ elif page == "🔮 Cash Forecast":
 
 
 # ──────────── RISK MONITOR ────────────
-elif page == "🛡️ Risk Monitor":
-    st.title("🛡️ Risk Early Warning System")
+elif page == "Risk Monitor":
+    st.title("Risk Early Warning System")
     liq_risk="Red" if buffer_pct<15 else "Yellow" if buffer_pct<20 else "Green"
     settle_risk="Yellow" if len(df_alerts[df_alerts["Title"].str.contains("Delay",case=False)&(df_alerts["Status"]!="Resolved")])>0 else "Green"
     ops_risk="Red" if unmatched>3 else "Yellow" if unmatched>1 else "Green"
@@ -803,7 +803,7 @@ elif page == "🛡️ Risk Monitor":
 
     r1,r2,r3,r4=st.columns(4)
     for col,(name,status,detail) in zip([r1,r2,r3,r4],[("Liquidity",liq_risk,f"Buffer: {buffer_pct:.1f}%"),("Settlement",settle_risk,"PSP timing"),("Operational",ops_risk,f"{unmatched} unmatched"),("Concentration",conc_risk,f"Top: {max_psp:.0f}%")]):
-        emoji="🟢" if status=="Green" else "🟡" if status=="Yellow" else "🔴"
+        emoji="G" if status=="Green" else "Y" if status=="Yellow" else "R"
         rcolor = {"Green":"#10b981","Yellow":"#f59e0b","Red":"#ef4444"}.get(status,"#94a3b8")
         col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:28px">{emoji}</div><h4 style="font-size:12px">{name}</h4><div style="font-size:16px;font-weight:700;color:{rcolor}">{status}</div><div class="sm">{detail}</div></div>',unsafe_allow_html=True)
 
@@ -821,12 +821,12 @@ elif page == "🛡️ Risk Monitor":
     sc1,sc2,sc3=st.columns(3)
     sc1.metric("New Pending",fmt_usd(nwd),f"+{inc}%",delta_color="inverse")
     sc2.metric("New Net Liq",fmt_usd(nliq))
-    sc3.metric("New Buffer",f"{nbuf:.1f}%","🔴 BREACH" if nbuf<15 else "✅ OK",delta_color="inverse" if nbuf<15 else "normal")
+    sc3.metric("New Buffer",f"{nbuf:.1f}%","BREACH" if nbuf<15 else "OK",delta_color="inverse" if nbuf<15 else "normal")
 
 
 # ──────────── AUDIT LOG ────────────
-elif page == "📋 Audit Log":
-    st.title("📋 Audit Log — SOX Compliance")
+elif page == "Audit Log":
+    st.title("Audit Log — SOX Compliance")
     st.caption("Complete trail of all user and system actions")
     df_audit = pd.DataFrame(st.session_state.audit_log)
     sf=st.selectbox("Filter by Section",["All"]+sorted(df_audit["Section"].unique().tolist()))
@@ -849,24 +849,24 @@ elif page == "📋 Audit Log":
 
 
 # ──────────── ARCHITECTURE ────────────
-elif page == "🏗️ Architecture":
-    st.title("🏗️ System Architecture")
-    layers=[("1️⃣ Connected Systems",["CRM","PSP Gateways","Bank Accounts","Trading Platform","Bonus Engine","Commission Engine"]),("2️⃣ Data Integration",["API Connectors","File Imports","Scheduled Pull","Validation"]),("3️⃣ Normalization",["Currency (ISO 4217)","Time (UTC)","ID Mapping","Type Mapping"]),("4️⃣ Reconciliation Engine",["ID Match","Amount Match","Time Window","Exception Detection"]),("5️⃣ Financial Ledger",["Client Funds","Company Cash","Fees","Commissions","Adjustments"])]
+elif page == "Architecture":
+    st.title("System Architecture")
+    layers=[("1. Connected Systems",["CRM","PSP Gateways","Bank Accounts","Trading Platform","Bonus Engine","Commission Engine"]),("2. Data Integration",["API Connectors","File Imports","Scheduled Pull","Validation"]),("3. Normalization",["Currency (ISO 4217)","Time (UTC)","ID Mapping","Type Mapping"]),("4. Reconciliation Engine",["ID Match","Amount Match","Time Window","Exception Detection"]),("5. Financial Ledger",["Client Funds","Company Cash","Fees","Commissions","Adjustments"])]
     for title,items in layers:
         st.subheader(title)
         cols=st.columns(len(items) if len(items)<=4 else 3)
         for i,item in enumerate(items):
             cols[i%len(cols)].markdown(f'<div class="card" style="text-align:center;min-height:50px"><div class="sm" style="color:{TXT};font-weight:500">{item}</div></div>',unsafe_allow_html=True)
         st.markdown('<div class="flow-arrow">▼</div>',unsafe_allow_html=True)
-    st.subheader("6️⃣ → Liquidity + Alerts → 7️⃣ Reports → 8️⃣ End Users")
+    st.subheader("6. → Liquidity + Alerts → 7. Reports → 8. End Users")
     uc=st.columns(5)
-    for col,(i,r) in zip(uc,[("👔","CFO"),("📊","Finance"),("⚙️","Ops"),("🔄","Recon"),("🏢","Mgmt")]):
+    for col,(i,r) in zip(uc,[("","CFO"),("","Finance"),("","Ops"),("","Recon"),("","Mgmt")]):
         col.markdown(f'<div class="card" style="text-align:center"><div style="font-size:22px">{i}</div><h4 style="font-size:11px">{r}</h4></div>',unsafe_allow_html=True)
 
 
 # ──────────── INTEGRATIONS ────────────
-elif page == "🔌 Integrations":
-    st.title("🔌 Integrations")
+elif page == "Integrations":
+    st.title("Integrations")
     intg=[("CRM","REST API","Online","2 min"),("Stripe","REST+Webhook","Online","30s"),("Adyen","REST API","Warning","4h"),("Worldpay","REST API","Online","5 min"),("JPMorgan","SWIFT/SFTP","Online","15 min"),("HSBC","SWIFT/SFTP","Online","15 min"),("Deutsche Bank","SWIFT/SFTP","Online","15 min"),("Barclays","SWIFT/SFTP","Online","15 min"),("Trading Platform","WebSocket","Online","Real-time"),("Bonus Engine","REST API","Online","18 min"),("Commission Engine","REST API","Online","10 min")]
     for name,proto,health,sync in intg:
         dot="dot-g" if health=="Online" else "dot-y"
@@ -874,31 +874,31 @@ elif page == "🔌 Integrations":
 
 
 # ──────────── SETTINGS ────────────
-elif page == "⚙️ Settings":
-    st.title("⚙️ Settings")
+elif page == "Settings":
+    st.title("Settings")
     tab_gen,tab_users,tab_alerts_cfg,tab_recon_cfg=st.tabs(["General","Users","Alert Rules","Recon Rules"])
     with tab_gen:
         st.text_input("Company",value="FinanceOps Corp"); st.selectbox("Base CCY",["USD","EUR","GBP"],key="set_ccy"); st.number_input("Buffer Threshold %",value=15.0,step=0.5)
-        st.button("💾 Save",use_container_width=True,key="save_gen")
+        st.button("Save",use_container_width=True,key="save_gen")
     with tab_users:
         st.dataframe(pd.DataFrame([{"User":"Ahmed K.","Role":"CFO","Access":"Full"},{"User":"Sarah M.","Role":"Finance Mgr","Access":"Finance+Reports"},{"User":"Omar R.","Role":"Ops Mgr","Access":"Txns+Alerts"},{"User":"Lina T.","Role":"Recon Analyst","Access":"Recon+Ledger"},{"User":"David P.","Role":"Compliance","Access":"Alerts+Reports"}]),use_container_width=True,hide_index=True)
     with tab_alerts_cfg:
         st.number_input("WD Spike %",value=200,step=10); st.number_input("Cash Imbalance $",value=5000,step=500); st.number_input("Recon Threshold %",value=5.0,step=0.5)
-        st.button("💾 Save",use_container_width=True,key="save_alert")
+        st.button("Save",use_container_width=True,key="save_alert")
     with tab_recon_cfg:
         st.number_input("Amount Tolerance %",value=1.0,step=0.1); st.number_input("Time Window (h)",value=24,step=1)
         st.checkbox("Auto-create cases",value=True); st.checkbox("Auto-match ID+Amount",value=True)
-        st.button("💾 Save",use_container_width=True,key="save_recon")
+        st.button("Save",use_container_width=True,key="save_recon")
 
 
 # ──────────── FILE UPLOAD ────────────
-elif page == "📂 File Upload":
-    st.title("📂 File Upload")
+elif page == "File Upload":
+    st.title("File Upload")
     uploaded=st.file_uploader("Drop files",type=["docx","xlsx","xls","csv","pdf","txt"],accept_multiple_files=True)
     if uploaded:
         for uf in uploaded:
             ext=uf.name.rsplit(".",1)[-1].lower()
-            st.markdown("---"); st.subheader(f"📄 {uf.name}")
+            st.markdown("---"); st.subheader(f"{uf.name}")
             try:
                 if ext=="csv":
                     df=pd.read_csv(uf); st.success(f"{len(df)} rows"); st.dataframe(df,use_container_width=True,hide_index=True); export_df(df,uf.name,f"exp_{uf.name}")
@@ -922,4 +922,4 @@ elif page == "📂 File Upload":
                 elif ext=="txt": st.text(uf.read().decode("utf-8",errors="replace"))
             except Exception as e: st.error(f"Error: {e}")
     else:
-        st.markdown(f'<div class="card" style="text-align:center;padding:40px"><div style="font-size:48px">📂</div><h4>Upload files</h4><div class="sm">.docx · .xlsx · .csv · .pdf · .txt</div></div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="card" style="text-align:center;padding:40px"><div style="font-size:28px;color:#6366f1;font-weight:700">Upload</div><h4>Upload files</h4><div class="sm">.docx · .xlsx · .csv · .pdf · .txt</div></div>',unsafe_allow_html=True)
