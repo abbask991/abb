@@ -260,10 +260,61 @@ monthly_kpis = [{"Month":"Jan","Net_Flow":1200000,"Op_Costs":85000,"Exceptions":
 
 scheduled_jobs = [{"Job":"CRM Data Pull","Schedule":"Every 5 min","Last_Run":"2026-05-18 11:15","Status":"Success","Duration":"2.1s","Records":142},{"Job":"PSP Settlement Import","Schedule":"Every 15 min","Last_Run":"2026-05-18 11:00","Status":"Success","Duration":"4.8s","Records":38},{"Job":"Bank Statement (SWIFT)","Schedule":"Every 30 min","Last_Run":"2026-05-18 11:00","Status":"Success","Duration":"8.2s","Records":15},{"Job":"Auto-Reconciliation","Schedule":"Every 10 min","Last_Run":"2026-05-18 11:10","Status":"Success","Duration":"12.5s","Records":10},{"Job":"Commission Calc","Schedule":"Hourly","Last_Run":"2026-05-18 11:00","Status":"Success","Duration":"3.1s","Records":4},{"Job":"Liquidity Check","Schedule":"Every 5 min","Last_Run":"2026-05-18 11:15","Status":"Warning","Duration":"1.2s","Records":1},{"Job":"Daily Report Gen","Schedule":"Daily 01:00","Last_Run":"2026-05-18 01:00","Status":"Success","Duration":"45s","Records":1}]
 
+# Cost Management Data
+cost_categories = ["PSP Processing","Bank Charges","IB Commissions","Bonuses & Promotions","Operational","Technology","Compliance","Staff"]
+
+costs_data = [
+    {"ID":"CST-001","Date":"2026-05-18","Category":"PSP Processing","Vendor":"Stripe","Description":"Processing fees - May batch","Amount":4250,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-042"},
+    {"ID":"CST-002","Date":"2026-05-18","Category":"PSP Processing","Vendor":"Adyen","Description":"Processing fees - May batch","Amount":3180,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-043"},
+    {"ID":"CST-003","Date":"2026-05-18","Category":"PSP Processing","Vendor":"Worldpay","Description":"Processing fees - May batch","Amount":2890,"CCY":"USD","Status":"Pending","Invoice":"INV-2026-044"},
+    {"ID":"CST-004","Date":"2026-05-18","Category":"Bank Charges","Vendor":"JPMorgan","Description":"Monthly account fees + wire charges","Amount":1850,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-045"},
+    {"ID":"CST-005","Date":"2026-05-18","Category":"Bank Charges","Vendor":"HSBC","Description":"SWIFT transfer fees","Amount":620,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-046"},
+    {"ID":"CST-006","Date":"2026-05-18","Category":"Bank Charges","Vendor":"Deutsche Bank","Description":"EUR account maintenance","Amount":480,"CCY":"EUR","Status":"Paid","Invoice":"INV-2026-047"},
+    {"ID":"CST-007","Date":"2026-05-18","Category":"IB Commissions","Vendor":"IB-Alpha","Description":"Volume-based commission - May","Amount":18750,"CCY":"USD","Status":"Accrued","Invoice":""},
+    {"ID":"CST-008","Date":"2026-05-18","Category":"IB Commissions","Vendor":"IB-Beta","Description":"Monthly commission","Amount":13350,"CCY":"USD","Status":"Accrued","Invoice":""},
+    {"ID":"CST-009","Date":"2026-05-18","Category":"IB Commissions","Vendor":"IB-Gamma","Description":"Volume-based commission - May","Amount":31500,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-048"},
+    {"ID":"CST-010","Date":"2026-05-17","Category":"Bonuses & Promotions","Vendor":"Internal","Description":"Welcome bonus pool - May","Amount":45000,"CCY":"USD","Status":"Allocated","Invoice":""},
+    {"ID":"CST-011","Date":"2026-05-17","Category":"Bonuses & Promotions","Vendor":"Internal","Description":"Loyalty program - May","Amount":22000,"CCY":"USD","Status":"Allocated","Invoice":""},
+    {"ID":"CST-012","Date":"2026-05-16","Category":"Operational","Vendor":"AWS","Description":"Cloud hosting - May","Amount":8500,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-038"},
+    {"ID":"CST-013","Date":"2026-05-16","Category":"Technology","Vendor":"Datadog","Description":"Monitoring platform - May","Amount":2200,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-039"},
+    {"ID":"CST-014","Date":"2026-05-15","Category":"Compliance","Vendor":"KYC Provider","Description":"AML screening - May","Amount":3500,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-035"},
+    {"ID":"CST-015","Date":"2026-05-15","Category":"Staff","Vendor":"Payroll","Description":"Finance team - May","Amount":42000,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-034"},
+    {"ID":"CST-016","Date":"2026-05-15","Category":"Staff","Vendor":"Payroll","Description":"Operations team - May","Amount":35000,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-034"},
+    {"ID":"CST-017","Date":"2026-05-14","Category":"Operational","Vendor":"Office","Description":"Office rent - May","Amount":12000,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-030"},
+    {"ID":"CST-018","Date":"2026-05-14","Category":"Technology","Vendor":"Salesforce","Description":"CRM license - May","Amount":4800,"CCY":"USD","Status":"Paid","Invoice":"INV-2026-031"},
+]
+
+monthly_costs = [
+    {"Month":"Jan","PSP_Processing":9200,"Bank_Charges":2800,"IB_Commissions":58000,"Bonuses":55000,"Operational":20500,"Technology":7000,"Compliance":3500,"Staff":77000},
+    {"Month":"Feb","PSP_Processing":8100,"Bank_Charges":2600,"IB_Commissions":52000,"Bonuses":48000,"Operational":20500,"Technology":7000,"Compliance":3200,"Staff":77000},
+    {"Month":"Mar","PSP_Processing":10800,"Bank_Charges":3100,"IB_Commissions":65000,"Bonuses":62000,"Operational":20500,"Technology":7200,"Compliance":3800,"Staff":77000},
+    {"Month":"Apr","PSP_Processing":9500,"Bank_Charges":2900,"IB_Commissions":60000,"Bonuses":58000,"Operational":20500,"Technology":7000,"Compliance":3500,"Staff":77000},
+    {"Month":"May","PSP_Processing":10320,"Bank_Charges":2950,"IB_Commissions":63600,"Bonuses":67000,"Operational":20500,"Technology":7000,"Compliance":3500,"Staff":77000},
+]
+
+cost_budgets = {"PSP Processing":12000,"Bank Charges":3500,"IB Commissions":70000,"Bonuses & Promotions":60000,"Operational":22000,"Technology":8000,"Compliance":4000,"Staff":80000}
+
+# Invoice Data
+invoices_data = [
+    {"Invoice":"INV-2026-050","Date":"2026-05-18","Client":"Acme Corp","Type":"Service Fee","Amount":2500,"CCY":"USD","Status":"Draft","Due_Date":"2026-06-17","Items":3,"Description":"Monthly platform fees + processing"},
+    {"Invoice":"INV-2026-049","Date":"2026-05-17","Client":"MegaFund","Type":"Service Fee","Amount":8200,"CCY":"USD","Status":"Sent","Due_Date":"2026-06-16","Items":4,"Description":"Platform fees + premium support"},
+    {"Invoice":"INV-2026-048","Date":"2026-05-16","Client":"IB-Gamma","Type":"Commission","Amount":31500,"CCY":"USD","Status":"Paid","Due_Date":"2026-05-30","Items":1,"Description":"May volume-based commission"},
+    {"Invoice":"INV-2026-047","Date":"2026-05-15","Client":"Deutsche Bank","Type":"Bank Fee","Amount":480,"CCY":"EUR","Status":"Paid","Due_Date":"2026-05-31","Items":2,"Description":"EUR account maintenance"},
+    {"Invoice":"INV-2026-046","Date":"2026-05-15","Client":"HSBC","Type":"Bank Fee","Amount":620,"CCY":"USD","Status":"Paid","Due_Date":"2026-05-31","Items":1,"Description":"SWIFT transfer fees"},
+    {"Invoice":"INV-2026-045","Date":"2026-05-14","Client":"JPMorgan","Type":"Bank Fee","Amount":1850,"CCY":"USD","Status":"Paid","Due_Date":"2026-05-31","Items":3,"Description":"Account fees + wire charges"},
+    {"Invoice":"INV-2026-044","Date":"2026-05-14","Client":"Worldpay","Type":"PSP Fee","Amount":2890,"CCY":"USD","Status":"Pending","Due_Date":"2026-06-13","Items":2,"Description":"Processing fees - May"},
+    {"Invoice":"INV-2026-043","Date":"2026-05-13","Client":"Adyen","Type":"PSP Fee","Amount":3180,"CCY":"USD","Status":"Paid","Due_Date":"2026-06-12","Items":2,"Description":"Processing fees - May"},
+    {"Invoice":"INV-2026-042","Date":"2026-05-12","Client":"Stripe","Type":"PSP Fee","Amount":4250,"CCY":"USD","Status":"Paid","Due_Date":"2026-06-11","Items":3,"Description":"Processing fees - May"},
+    {"Invoice":"INV-2026-041","Date":"2026-05-10","Client":"TradeCo","Type":"Service Fee","Amount":5100,"CCY":"USD","Status":"Overdue","Due_Date":"2026-05-17","Items":2,"Description":"Platform fees - April"},
+    {"Invoice":"INV-2026-040","Date":"2026-05-08","Client":"Globe Ltd","Type":"Service Fee","Amount":2800,"CCY":"USD","Status":"Sent","Due_Date":"2026-06-07","Items":2,"Description":"Monthly platform fees"},
+    {"Invoice":"INV-2026-039","Date":"2026-05-05","Client":"SolarInc","Type":"Service Fee","Amount":3200,"CCY":"USD","Status":"Paid","Due_Date":"2026-06-04","Items":2,"Description":"Platform fees + API access"},
+]
+
 # DataFrames
 df_txn=pd.DataFrame(transactions_data); df_rec=pd.DataFrame(reconciliation_data); df_led=pd.DataFrame(ledger_data)
 df_alerts=pd.DataFrame(alerts_data); df_bank=pd.DataFrame(bank_balances); df_psp=pd.DataFrame(psp_balances)
 df_cash=pd.DataFrame(cash_flow); df_profit=pd.DataFrame(profitability); df_ib=pd.DataFrame(ib_data); df_kpi=pd.DataFrame(monthly_kpis)
+df_costs=pd.DataFrame(costs_data); df_mcosts=pd.DataFrame(monthly_costs); df_invoices=pd.DataFrame(invoices_data)
 
 # Computed
 opening_balance=4250000; today="2026-05-18"
@@ -337,7 +388,7 @@ with st.sidebar:
     st.session_state.base_ccy = st.selectbox("Base Currency",["USD","EUR","GBP"],index=["USD","EUR","GBP"].index(st.session_state.base_ccy))
     st.markdown("---")
 
-    all_pages = ["Dashboard","Activity Feed","Client 360","Transactions","Reconciliation","Ledger","Liquidity","PSP Scorecard",f"Alerts ({open_alert_count})","Reports","Cash Forecast","Risk Monitor","AI Anomaly","Client Scoring","Data Quality","Scheduled Jobs","Custom Dashboard","Audit Log","Architecture","Integrations","Data Import","Settings","File Upload"]
+    all_pages = ["Dashboard","Activity Feed","Client 360","Transactions","Reconciliation","Ledger","Cost Management","Invoices","Liquidity","PSP Scorecard",f"Alerts ({open_alert_count})","Reports","Cash Forecast","Risk Monitor","AI Anomaly","Client Scoring","Data Quality","Scheduled Jobs","Custom Dashboard","Audit Log","Architecture","Integrations","Data Import","Settings","File Upload"]
     visible = [p for p in all_pages if has_access(p.split(" (")[0]) or has_access(p)]
     page = st.radio("",visible,label_visibility="collapsed")
     st.markdown("---")
@@ -488,6 +539,197 @@ elif page_key == "Ledger":
     st.dataframe(view,use_container_width=True,hide_index=True); export_df(view,"Ledger","exp_led")
     tb=df_led.groupby("Account").agg(Debits=("Debit","sum"),Credits=("Credit","sum")).reset_index(); tb["Net"]=tb["Debits"]-tb["Credits"]
     st.subheader("Trial Balance"); st.dataframe(tb,use_container_width=True,hide_index=True)
+
+elif page_key == "Cost Management":
+    st.title("Cost Management")
+    st.caption("Cost tracking by category with budget analysis")
+
+    total_costs_val = df_costs["Amount"].sum()
+    total_budget = sum(cost_budgets.values())
+    budget_used_pct = total_costs_val / total_budget * 100
+
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Total Costs (MTD)", fmt(total_costs_val))
+    c2.metric("Budget", fmt(total_budget))
+    c3.metric("Budget Used", f"{budget_used_pct:.1f}%", "Over" if budget_used_pct > 100 else "Under", delta_color="inverse" if budget_used_pct > 100 else "normal")
+    c4.metric("Cost Items", len(df_costs))
+
+    # Cost by category
+    st.subheader("Cost by Category")
+    cat_costs = df_costs.groupby("Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+    cat_costs["Budget"] = cat_costs["Category"].map(cost_budgets)
+    cat_costs["Variance"] = cat_costs["Budget"] - cat_costs["Amount"]
+    cat_costs["Usage %"] = (cat_costs["Amount"] / cat_costs["Budget"] * 100).round(1)
+
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=cat_costs["Category"], y=cat_costs["Amount"], name="Actual", marker_color="#ef4444"))
+        fig.add_trace(go.Bar(x=cat_costs["Category"], y=cat_costs["Budget"], name="Budget", marker_color="#6366f1"))
+        fig.update_layout(**PL, height=300, barmode="group", title="Actual vs Budget")
+        st.plotly_chart(fig, use_container_width=True)
+    with cc2:
+        fig2 = px.pie(cat_costs, values="Amount", names="Category", hole=0.5, color_discrete_sequence=["#ef4444","#f59e0b","#8b5cf6","#10b981","#6366f1","#06b6d4","#3b82f6","#ec4899"])
+        fig2.update_layout(**PL, height=300)
+        fig2.update_traces(textinfo="value+percent")
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.subheader("Budget vs Actual")
+    st.dataframe(cat_costs[["Category","Amount","Budget","Variance","Usage %"]], use_container_width=True, hide_index=True,
+        column_config={"Amount":st.column_config.NumberColumn(format="$%d"),"Budget":st.column_config.NumberColumn(format="$%d"),"Variance":st.column_config.NumberColumn(format="$%d"),"Usage %":st.column_config.ProgressColumn(min_value=0,max_value=120,format="%.1f%%")})
+
+    # Cost trend
+    st.subheader("Monthly Cost Trend")
+    trend_cols = ["PSP_Processing","Bank_Charges","IB_Commissions","Bonuses","Operational","Technology","Compliance","Staff"]
+    fig_trend = go.Figure()
+    colors = ["#ef4444","#f59e0b","#8b5cf6","#10b981","#6366f1","#06b6d4","#3b82f6","#ec4899"]
+    for i, col in enumerate(trend_cols):
+        fig_trend.add_trace(go.Scatter(x=df_mcosts["Month"], y=df_mcosts[col], mode="lines+markers", name=col.replace("_"," "), line=dict(color=colors[i], width=2)))
+    fig_trend.update_layout(**PL, height=320, legend=dict(orientation="h", y=-0.2))
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+    # Stacked bar
+    st.subheader("Total Cost Composition")
+    fig_stack = go.Figure()
+    for i, col in enumerate(trend_cols):
+        fig_stack.add_trace(go.Bar(x=df_mcosts["Month"], y=df_mcosts[col], name=col.replace("_"," "), marker_color=colors[i]))
+    fig_stack.update_layout(**PL, height=300, barmode="stack")
+    st.plotly_chart(fig_stack, use_container_width=True)
+
+    # All cost items
+    st.subheader("All Cost Items")
+    cat_filter = st.selectbox("Filter by Category", ["All"] + sorted(df_costs["Category"].unique().tolist()))
+    status_filter = st.selectbox("Filter by Status", ["All"] + sorted(df_costs["Status"].unique().tolist()), key="cost_status")
+    view_costs = df_costs.copy()
+    if cat_filter != "All": view_costs = view_costs[view_costs["Category"] == cat_filter]
+    if status_filter != "All": view_costs = view_costs[view_costs["Status"] == status_filter]
+    st.dataframe(view_costs[["ID","Date","Category","Vendor","Description","Amount","CCY","Status","Invoice"]], use_container_width=True, hide_index=True,
+        column_config={"Amount":st.column_config.NumberColumn(format="$%.2f")})
+    export_df(view_costs, "Costs", "exp_costs")
+
+    # Top vendors
+    st.subheader("Top Vendors by Cost")
+    vendor_costs = df_costs.groupby("Vendor")["Amount"].sum().reset_index().sort_values("Amount", ascending=True)
+    fig_v = px.bar(vendor_costs, y="Vendor", x="Amount", orientation="h", color_discrete_sequence=["#ef4444"])
+    fig_v.update_layout(**PL, height=280, showlegend=False)
+    st.plotly_chart(fig_v, use_container_width=True)
+
+
+elif page_key == "Invoices":
+    st.title("Invoice Management")
+    st.caption("Create, track, and manage invoices")
+
+    total_invoiced = df_invoices["Amount"].sum()
+    paid = df_invoices[df_invoices["Status"]=="Paid"]["Amount"].sum()
+    pending_inv = df_invoices[df_invoices["Status"].isin(["Sent","Pending","Draft"])]["Amount"].sum()
+    overdue = df_invoices[df_invoices["Status"]=="Overdue"]["Amount"].sum()
+
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Total Invoiced", fmt(total_invoiced))
+    c2.metric("Paid", fmt(paid))
+    c3.metric("Pending", fmt(pending_inv))
+    c4.metric("Overdue", fmt(overdue), delta_color="inverse")
+
+    # Status breakdown
+    inv1, inv2 = st.columns(2)
+    with inv1:
+        status_counts = df_invoices["Status"].value_counts().reset_index()
+        status_counts.columns = ["Status","Count"]
+        fig = px.pie(status_counts, values="Count", names="Status", hole=0.55, color_discrete_map={"Paid":"#10b981","Sent":"#3b82f6","Pending":"#f59e0b","Draft":"#94a3b8","Overdue":"#ef4444"})
+        fig.update_layout(**PL, height=250)
+        fig.update_traces(textinfo="value+percent")
+        st.caption("Invoice Status")
+        st.plotly_chart(fig, use_container_width=True)
+    with inv2:
+        type_amounts = df_invoices.groupby("Type")["Amount"].sum().reset_index().sort_values("Amount", ascending=True)
+        fig2 = px.bar(type_amounts, y="Type", x="Amount", orientation="h", color="Type", color_discrete_sequence=["#6366f1","#10b981","#f59e0b","#ef4444"])
+        fig2.update_layout(**PL, height=250, showlegend=False)
+        st.caption("Revenue by Invoice Type")
+        st.plotly_chart(fig2, use_container_width=True)
+
+    # Invoice list
+    st.subheader("All Invoices")
+    inv_status_f = st.selectbox("Filter Status", ["All","Draft","Sent","Pending","Paid","Overdue"])
+    view_inv = df_invoices if inv_status_f == "All" else df_invoices[df_invoices["Status"]==inv_status_f]
+    st.dataframe(view_inv[["Invoice","Date","Client","Type","Amount","CCY","Status","Due_Date","Description"]], use_container_width=True, hide_index=True,
+        column_config={"Amount":st.column_config.NumberColumn(format="$%.2f")})
+    export_df(view_inv, "Invoices", "exp_inv")
+
+    # Create new invoice
+    st.subheader("Create New Invoice")
+    with st.form("new_invoice"):
+        ni1,ni2 = st.columns(2)
+        with ni1:
+            inv_client = st.selectbox("Client", sorted(df_txn[df_txn["Client"]!="Internal"]["Client"].unique().tolist()))
+            inv_type = st.selectbox("Invoice Type", ["Service Fee","PSP Fee","Bank Fee","Commission","Consulting","Other"])
+            inv_desc = st.text_input("Description", placeholder="Monthly platform fees")
+        with ni2:
+            inv_amount = st.number_input("Amount", min_value=0.0, value=1000.0, step=100.0)
+            inv_ccy = st.selectbox("Currency", ["USD","EUR","GBP"])
+            inv_due = st.date_input("Due Date", value=datetime.now() + timedelta(days=30))
+
+        st.subheader("Line Items")
+        li1,li2,li3 = st.columns(3)
+        with li1: item1 = st.text_input("Item 1", value="Platform fee")
+        with li2: qty1 = st.number_input("Qty", value=1, min_value=1, key="qty1")
+        with li3: price1 = st.number_input("Unit Price", value=inv_amount, step=50.0, key="p1")
+
+        li4,li5,li6 = st.columns(3)
+        with li4: item2 = st.text_input("Item 2 (optional)", value="")
+        with li5: qty2 = st.number_input("Qty", value=0, min_value=0, key="qty2")
+        with li6: price2 = st.number_input("Unit Price", value=0.0, step=50.0, key="p2")
+
+        submitted = st.form_submit_button("Create Invoice", use_container_width=True, type="primary")
+        if submitted:
+            inv_num = f"INV-2026-{len(df_invoices)+51:03d}"
+            total = qty1 * price1 + qty2 * price2
+            st.success(f"Invoice {inv_num} created for {inv_client} - {fmt(total)} {inv_ccy}")
+            add_audit(f"Created invoice {inv_num} for {inv_client}", "Invoices")
+            add_feed(f"Created invoice {inv_num}", "action")
+
+    # Invoice detail view
+    st.subheader("Invoice Details")
+    sel_inv = st.selectbox("Select Invoice", df_invoices["Invoice"].tolist())
+    if sel_inv:
+        inv = df_invoices[df_invoices["Invoice"]==sel_inv].iloc[0]
+        d1,d2 = st.columns(2)
+        with d1:
+            st.markdown(f"**Invoice:** {inv['Invoice']}")
+            st.markdown(f"**Client:** {inv['Client']}")
+            st.markdown(f"**Type:** {inv['Type']}")
+            st.markdown(f"**Description:** {inv['Description']}")
+        with d2:
+            st.markdown(f"**Amount:** {inv['Amount']:,.2f} {inv['CCY']}")
+            st.markdown(f"**Status:** {inv['Status']}")
+            st.markdown(f"**Date:** {inv['Date']}")
+            st.markdown(f"**Due Date:** {inv['Due_Date']}")
+
+        # Aging analysis
+        due = datetime.strptime(inv["Due_Date"], "%Y-%m-%d")
+        days_until = (due - datetime.now()).days
+        if inv["Status"] == "Overdue":
+            st.error(f"OVERDUE by {abs(days_until)} days")
+        elif inv["Status"] == "Paid":
+            st.success("PAID")
+        else:
+            st.info(f"Due in {days_until} days")
+
+    # Aging summary
+    st.subheader("Aging Analysis")
+    aging = {"Current (0-30 days)": 0, "30-60 days": 0, "60-90 days": 0, "90+ days (Overdue)": 0}
+    for _,inv in df_invoices[df_invoices["Status"]!="Paid"].iterrows():
+        due = datetime.strptime(inv["Due_Date"], "%Y-%m-%d")
+        days = (datetime.now() - due).days
+        if days < 0: aging["Current (0-30 days)"] += inv["Amount"]
+        elif days < 30: aging["30-60 days"] += inv["Amount"]
+        elif days < 60: aging["60-90 days"] += inv["Amount"]
+        else: aging["90+ days (Overdue)"] += inv["Amount"]
+
+    aging_df = pd.DataFrame([{"Period":k,"Amount":v} for k,v in aging.items()])
+    fig_aging = px.bar(aging_df, x="Period", y="Amount", color="Period", color_discrete_sequence=["#10b981","#f59e0b","#ef4444","#dc2626"])
+    fig_aging.update_layout(**PL, height=240, showlegend=False, title="Outstanding by Aging")
+    st.plotly_chart(fig_aging, use_container_width=True)
+
 
 elif page_key == "Liquidity":
     st.title("Liquidity Intelligence")
