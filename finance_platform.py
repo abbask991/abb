@@ -78,13 +78,24 @@ if st.session_state.authenticated:
 # ============================================================
 if not st.session_state.authenticated:
     st.markdown("""<style>
-    .main .block-container{max-width:450px;padding-top:10vh}
-    div[data-testid="stMetric"]{background:#0f1729;border:1px solid #1e2d4a;border-radius:10px;padding:14px}
+    .main .block-container{max-width:420px;padding-top:8vh}
+    [data-testid="stAppViewBlockContainer"]{background:transparent}
+    .login-card{background:linear-gradient(135deg,#0f1729 0%,#1a2744 100%);border:1px solid #2a3a5c;border-radius:16px;padding:40px 36px 32px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+    .login-title{font-size:28px;font-weight:800;color:#e2e8f0;letter-spacing:-0.5px;margin-bottom:2px}
+    .login-sub{font-size:13px;color:#64748b;margin-bottom:24px}
+    .login-divider{border:none;border-top:1px solid #1e2d4a;margin:20px 0}
+    .login-accounts{font-size:11px;color:#475569;line-height:1.8}
+    .login-accounts b{color:#64748b}
+    div[data-testid="stTextInput"] input{background:#0b1120!important;border:1px solid #1e2d4a!important;border-radius:8px!important;color:#e2e8f0!important;padding:10px 14px!important}
+    div[data-testid="stTextInput"] input:focus{border-color:#6366f1!important;box-shadow:0 0 0 2px rgba(99,102,241,0.2)!important}
+    div[data-testid="stTextInput"] label{font-size:12px!important;color:#94a3b8!important;text-transform:uppercase;letter-spacing:0.5px}
+    button[kind="primary"]{background:linear-gradient(135deg,#6366f1,#4f46e5)!important;border:none!important;border-radius:8px!important;padding:10px!important;font-weight:600!important;letter-spacing:0.3px}
+    button[kind="primary"]:hover{background:linear-gradient(135deg,#818cf8,#6366f1)!important}
     </style>""", unsafe_allow_html=True)
 
-    st.title("FinanceOps")
-    st.caption("Financial Control & Intelligence Platform")
-    st.markdown("---")
+    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">FinanceOps</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-sub">Financial Control & Intelligence Platform</div>', unsafe_allow_html=True)
 
     username = st.text_input("Username", placeholder="Enter username")
     password = st.text_input("Password", type="password", placeholder="Enter password")
@@ -106,11 +117,13 @@ if not st.session_state.authenticated:
         else:
             st.error("User not found")
 
-    st.markdown("---")
-    st.caption("Demo accounts:")
-    st.caption("demo / demo (full access)")
-    st.caption("ahmed / admin123 (CFO) | sarah / finance1 (Finance)")
-    st.caption("omar / ops123 (Ops) | lina / recon1 (Recon) | david / comp123 (Compliance)")
+    st.markdown('<hr class="login-divider">', unsafe_allow_html=True)
+    st.markdown("""<div class="login-accounts">
+    <b>Demo:</b> demo / demo &nbsp;(full access)<br>
+    <b>CFO:</b> ahmed / admin123 &nbsp;&nbsp; <b>Finance:</b> sarah / finance1<br>
+    <b>Ops:</b> omar / ops123 &nbsp;&nbsp; <b>Recon:</b> lina / recon1 &nbsp;&nbsp; <b>Compliance:</b> david / comp123
+    </div>""", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # ============================================================
@@ -138,30 +151,80 @@ TXT = "#e2e8f0" if dark else "#1e293b"
 TXT2 = "#94a3b8" if dark else "#64748b"
 
 st.markdown(f"""<style>
-.main .block-container{{padding-top:1rem}}
-div[data-testid="stMetric"]{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:10px;padding:14px 18px}}
-div[data-testid="stMetric"] label{{font-size:11px!important;text-transform:uppercase;letter-spacing:.5px}}
-.badge{{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}}
-.bg-green{{background:rgba(16,185,129,.12);color:#10b981}}.bg-red{{background:rgba(239,68,68,.12);color:#ef4444}}
-.bg-yellow{{background:rgba(245,158,11,.12);color:#f59e0b}}.bg-blue{{background:rgba(59,130,246,.12);color:#3b82f6}}
-.bg-purple{{background:rgba(139,92,246,.12);color:#8b5cf6}}
-.card{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:10px;padding:16px 18px;margin-bottom:8px}}
-.card h4{{font-size:14px;font-weight:700;margin-bottom:8px;color:{TXT}}}
-.sm{{font-size:12px;color:{TXT2}}}
-.alert-card{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:8px;padding:14px 18px;margin-bottom:8px}}
-.alert-title{{font-weight:600;font-size:13px;margin-bottom:3px;color:{TXT}}}
-.alert-desc{{font-size:12px;color:{TXT2};line-height:1.5}}
-.risk-row{{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:{CARD_BG};border:1px solid {CARD_BD};border-radius:8px;margin-bottom:6px}}
-.risk-label{{font-size:13px;color:{TXT}}}.risk-val{{font-weight:700;font-size:13px}}
-.flow-arrow{{text-align:center;font-size:20px;color:#6366f1;margin:4px 0}}
-.status-dot{{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}}
-.dot-g{{background:#10b981}}.dot-y{{background:#f59e0b}}.dot-r{{background:#ef4444}}
-.feed-item{{padding:8px 12px;border-left:3px solid #6366f1;margin-bottom:6px;background:{CARD_BG};border-radius:0 6px 6px 0}}
-.feed-time{{font-size:10px;color:{TXT2}}}
-.comment-box{{background:{CARD_BG};border:1px solid {CARD_BD};border-radius:6px;padding:10px 14px;margin:4px 0;font-size:12px}}
-.sla-bar{{height:6px;border-radius:3px;background:#1e2d4a;overflow:hidden;margin-top:4px}}
-.sla-fill{{height:100%;border-radius:3px}}
-div[data-testid="stSidebar"]>div:first-child{{padding-top:.8rem}}
+/* Layout */
+.main .block-container{{padding:1.5rem 2rem 2rem}}
+section[data-testid="stSidebar"]{{background:{'linear-gradient(180deg,#080e1e 0%,#0f1729 100%)' if dark else '#f1f5f9'};border-right:1px solid {CARD_BD}}}
+section[data-testid="stSidebar"] div[data-testid="stSidebarContent"]{{padding-top:1rem}}
+
+/* Metrics */
+div[data-testid="stMetric"]{{background:{'linear-gradient(135deg,#0f1729 0%,#141e33 100%)' if dark else 'linear-gradient(135deg,#ffffff 0%,#f8fafc 100%)'};border:1px solid {CARD_BD};border-radius:12px;padding:18px 20px;box-shadow:{'0 2px 8px rgba(0,0,0,0.3)' if dark else '0 1px 4px rgba(0,0,0,0.06)'}}}
+div[data-testid="stMetric"] label{{font-size:11px!important;text-transform:uppercase;letter-spacing:.6px;color:{TXT2}!important}}
+div[data-testid="stMetric"] [data-testid="stMetricValue"]{{font-size:22px!important;font-weight:700!important}}
+
+/* Badges */
+.badge{{display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}}
+.bg-green{{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.2)}}
+.bg-red{{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2)}}
+.bg-yellow{{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}}
+.bg-blue{{background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.2)}}
+.bg-purple{{background:rgba(139,92,246,.12);color:#8b5cf6;border:1px solid rgba(139,92,246,.2)}}
+
+/* Cards */
+.card{{background:{'linear-gradient(135deg,#0f1729 0%,#141e33 100%)' if dark else '#ffffff'};border:1px solid {CARD_BD};border-radius:12px;padding:20px 22px;margin-bottom:10px;box-shadow:{'0 2px 8px rgba(0,0,0,0.25)' if dark else '0 1px 4px rgba(0,0,0,0.06)'}}}
+.card h4{{font-size:14px;font-weight:700;margin-bottom:10px;color:{TXT};letter-spacing:-.2px}}
+.sm{{font-size:12px;color:{TXT2};line-height:1.6}}
+
+/* Alert Cards */
+.alert-card{{background:{'linear-gradient(135deg,#0f1729 0%,#141e33 100%)' if dark else '#ffffff'};border:1px solid {CARD_BD};border-left:3px solid #6366f1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:10px;box-shadow:{'0 2px 8px rgba(0,0,0,0.2)' if dark else '0 1px 3px rgba(0,0,0,0.05)'};transition:transform .15s,box-shadow .15s}}
+.alert-card:hover{{transform:translateY(-1px);box-shadow:{'0 4px 12px rgba(0,0,0,0.35)' if dark else '0 2px 8px rgba(0,0,0,0.1)'}}}
+.alert-title{{font-weight:700;font-size:14px;margin-bottom:4px;color:{TXT}}}
+.alert-desc{{font-size:12px;color:{TXT2};line-height:1.6}}
+
+/* Risk Rows */
+.risk-row{{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:{'linear-gradient(135deg,#0b1120 0%,#0f1729 100%)' if dark else '#f8fafc'};border:1px solid {CARD_BD};border-radius:10px;margin-bottom:8px;transition:background .15s}}
+.risk-row:hover{{background:{'#141e33' if dark else '#f1f5f9'}}}
+.risk-label{{font-size:13px;color:{TXT};font-weight:500}}.risk-val{{font-weight:700;font-size:13px}}
+
+/* Flow arrows */
+.flow-arrow{{text-align:center;font-size:18px;color:#6366f1;margin:6px 0;opacity:.6}}
+
+/* Status dots */
+.status-dot{{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;box-shadow:0 0 4px currentColor}}
+.dot-g{{background:#10b981;color:#10b981}}.dot-y{{background:#f59e0b;color:#f59e0b}}.dot-r{{background:#ef4444;color:#ef4444}}
+
+/* Activity Feed */
+.feed-item{{padding:10px 14px;border-left:3px solid #6366f1;margin-bottom:8px;background:{'linear-gradient(90deg,rgba(99,102,241,.05),transparent)' if dark else 'rgba(99,102,241,.03)'};border-radius:0 8px 8px 0}}
+.feed-time{{font-size:10px;color:{TXT2};letter-spacing:.3px}}
+
+/* Comments */
+.comment-box{{background:{'#0b1120' if dark else '#f1f5f9'};border:1px solid {CARD_BD};border-radius:8px;padding:12px 16px;margin:6px 0;font-size:12px;line-height:1.5}}
+
+/* SLA Bar */
+.sla-bar{{height:6px;border-radius:3px;background:{'#1e2d4a' if dark else '#e2e8f0'};overflow:hidden;margin-top:6px}}
+.sla-fill{{height:100%;border-radius:3px;transition:width .3s}}
+
+/* Tabs */
+button[data-baseweb="tab"]{{font-size:13px!important;font-weight:500!important;letter-spacing:.2px}}
+
+/* Tables */
+div[data-testid="stDataFrame"]{{border-radius:10px;overflow:hidden;border:1px solid {CARD_BD}}}
+
+/* Headings */
+h1{{font-weight:800!important;letter-spacing:-.5px!important;font-size:28px!important}}
+h2,h3{{font-weight:700!important;letter-spacing:-.3px!important}}
+
+/* Buttons */
+button[kind="secondary"]{{border-radius:8px!important;font-weight:500!important;border-color:{CARD_BD}!important}}
+button[kind="primary"]{{border-radius:8px!important;font-weight:600!important}}
+
+/* Selectbox & inputs */
+div[data-baseweb="select"]>div{{border-radius:8px!important;border-color:{CARD_BD}!important}}
+div[data-testid="stTextInput"] input{{border-radius:8px!important}}
+
+/* Scrollbar */
+::-webkit-scrollbar{{width:6px;height:6px}}
+::-webkit-scrollbar-thumb{{background:{CARD_BD};border-radius:3px}}
+::-webkit-scrollbar-track{{background:transparent}}
 </style>""", unsafe_allow_html=True)
 
 PLT = "plotly_dark" if dark else "plotly_white"
@@ -373,17 +436,26 @@ def check_data_quality(df, name):
 # SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.markdown(f"### **FinanceOps**")
-    st.caption(f"Signed in: **{st.session_state.user_name}** ({st.session_state.role})")
-    if st.button("Sign Out", use_container_width=True):
-        add_audit("Logged out","Auth"); add_feed("Logged out","auth")
-        for k in ["authenticated","user","role","user_name","last_activity"]: st.session_state[k] = defaults[k]
-        st.rerun()
-    st.markdown("---")
+    st.markdown(f"""<div style="padding:4px 0 12px">
+    <div style="font-size:22px;font-weight:800;color:{'#e2e8f0' if dark else '#1e293b'};letter-spacing:-.5px">FinanceOps</div>
+    <div style="font-size:11px;color:#6366f1;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:2px">Control & Intelligence</div>
+    </div>""", unsafe_allow_html=True)
 
-    theme_label = "Dark" if dark else "Light"
-    if st.button(f"Theme: {theme_label}", use_container_width=True):
-        st.session_state.theme = "light" if dark else "dark"; st.rerun()
+    st.markdown(f"""<div style="background:{'linear-gradient(135deg,#141e33,#1a2744)' if dark else '#f1f5f9'};border-radius:10px;padding:12px 14px;margin-bottom:12px;border:1px solid {CARD_BD}">
+    <div style="font-size:13px;font-weight:600;color:{TXT}">{st.session_state.user_name}</div>
+    <div style="font-size:11px;color:{TXT2}">{st.session_state.role}</div>
+    </div>""", unsafe_allow_html=True)
+
+    sc1, sc2 = st.columns(2)
+    with sc1:
+        if st.button("Sign Out", use_container_width=True):
+            add_audit("Logged out","Auth"); add_feed("Logged out","auth")
+            for k in ["authenticated","user","role","user_name","last_activity"]: st.session_state[k] = defaults[k]
+            st.rerun()
+    with sc2:
+        theme_label = "Dark" if dark else "Light"
+        if st.button(f"{theme_label}", use_container_width=True):
+            st.session_state.theme = "light" if dark else "dark"; st.rerun()
 
     st.session_state.base_ccy = st.selectbox("Base Currency",["USD","EUR","GBP"],index=["USD","EUR","GBP"].index(st.session_state.base_ccy))
     st.markdown("---")
@@ -392,8 +464,10 @@ with st.sidebar:
     visible = [p for p in all_pages if has_access(p.split(" (")[0]) or has_access(p)]
     page = st.radio("",visible,label_visibility="collapsed")
     st.markdown("---")
-    st.caption(f"Session: {SESSION_TIMEOUT_MIN}min timeout")
-    st.caption(datetime.now().strftime("%a, %b %d, %Y %H:%M"))
+    st.markdown(f"""<div style="font-size:10px;color:{TXT2};line-height:1.8">
+    Session timeout: {SESSION_TIMEOUT_MIN} min<br>
+    {datetime.now().strftime("%a, %b %d, %Y  %H:%M")}
+    </div>""", unsafe_allow_html=True)
 
 # ============================================================
 # PAGE ROUTING
